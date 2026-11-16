@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "462d301c09085690334c1c97",
+    "createdAt": "2026-11-16T08:50:40.422Z",
+    "updatedAt": "2026-11-16T08:50:40.422Z",
+    "action": "INITIALIZE_SYSTEM",
+    "performedBy": {
+      "id": "2204413da954d853a1410019",
+      "name": "Dr. Ramesh Sharma",
+      "email": "admin@university.edu",
+      "role": "admin"
+    },
+    "details": {
+      "message": "System database seeded with examination sessions, courses, and default fee configurations."
+    },
+    "ip": "127.0.0.1",
+    "timestamp": "2026-11-16T08:50:40.421Z"
+  },
+  {
+    "_id": "2fb188ec9fcf12ec2f8a3d8d",
+    "createdAt": "2026-11-16T09:37:41.110Z",
+    "updatedAt": "2026-11-16T09:37:41.111Z",
+    "action": "STUDENT_REGISTRATION_CREATED",
+    "performedBy": {
+      "id": "ba9fe386e7f94f2d98620a40",
+      "name": "Rahul Sharma",
+      "email": "rahul.cs@university.edu",
+      "role": "student"
+    },
+    "details": {
+      "registrationNumber": "REG-2026-ODD-10669",
+      "sessionId": "e220d8bf8adb996a812c54d8",
+      "theoryCount": 4,
+      "nonTheoryCount": 1,
+      "totalFee": 2400,
+      "paymentMethod": "MANUAL"
+    },
+    "ip": "::1",
+    "timestamp": "2026-11-16T09:37:41.110Z"
+  }
+]

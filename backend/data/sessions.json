@@ -1,0 +1,24 @@
+[
+  {
+    "_id": "e220d8bf8adb996a812c54d8",
+    "createdAt": "2026-11-16T08:50:40.099Z",
+    "updatedAt": "2026-11-16T08:50:40.099Z",
+    "name": "Winter 2026 Examination (Odd Semesters 1, 3, 5)",
+    "type": "ODD",
+    "academicYear": "2026-2027",
+    "startDate": "2026-11-01T00:00:00.000Z",
+    "endDate": "2026-12-31T23:59:59.000Z",
+    "isActive": true
+  },
+  {
+    "_id": "543c95d1581db6231de18592",
+    "createdAt": "2026-11-16T08:50:40.116Z",
+    "updatedAt": "2026-11-16T08:50:40.116Z",
+    "name": "Summer 2027 Examination (Even Semesters 2, 4, 6)",
+    "type": "EVEN",
+    "academicYear": "2026-2027",
+    "startDate": "2027-04-01T00:00:00.000Z",
+    "endDate": "2027-05-31T23:59:59.000Z",
+    "isActive": false
+  }
+]

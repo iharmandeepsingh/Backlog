@@ -1,0 +1,72 @@
+[
+  {
+    "_id": "2204413da954d853a1410019",
+    "createdAt": "2026-11-16T08:50:40.354Z",
+    "updatedAt": "2026-11-16T08:50:40.354Z",
+    "name": "Dr. Ramesh Sharma",
+    "email": "admin@university.edu",
+    "password": "$2b$10$x5LjfVy4Z/BCAd.LuXvnI.bMVBIzgQRl9kFKlMOaDSj82aABEMwRi",
+    "role": "admin",
+    "department": "Examination Control Division",
+    "program": "University Administration",
+    "phone": "+91 98765 43210"
+  },
+  {
+    "_id": "ba9fe386e7f94f2d98620a40",
+    "createdAt": "2026-11-16T08:50:40.376Z",
+    "updatedAt": "2026-11-16T08:50:40.376Z",
+    "name": "Rahul Sharma",
+    "email": "rahul.cs@university.edu",
+    "password": "$2b$10$ulkZUOVfHn/ASxENSlyHNe32p/.0MkIolZ8x4uHLxTsjJRFz4aglW",
+    "role": "student",
+    "rollNumber": "CS2022001",
+    "department": "Computer Science & Engineering",
+    "program": "B.Tech",
+    "currentSemester": 5,
+    "phone": "+91 98111 22233",
+    "eligibleBacklogs": [
+      "a408e2b6c487f09958183bf9",
+      "cb0dbe7a3b4759952feefc98",
+      "4549f6769aa6384f0b540c88",
+      "688cb147979833decaff6207",
+      "2cd01bceecb493f3afadfab1"
+    ]
+  },
+  {
+    "_id": "c70fbd46d21b0c8aa41de161",
+    "createdAt": "2026-11-16T08:50:40.391Z",
+    "updatedAt": "2026-11-16T08:50:40.391Z",
+    "name": "Priya Patel",
+    "email": "priya.cs@university.edu",
+    "password": "$2b$10$ulkZUOVfHn/ASxENSlyHNe32p/.0MkIolZ8x4uHLxTsjJRFz4aglW",
+    "role": "student",
+    "rollNumber": "CS2022045",
+    "department": "Computer Science & Engineering",
+    "program": "B.Tech",
+    "currentSemester": 5,
+    "phone": "+91 98222 33344",
+    "eligibleBacklogs": [
+      "4549f6769aa6384f0b540c88",
+      "fcf861b3732069eaf5019b36",
+      "688cb147979833decaff6207"
+    ]
+  },
+  {
+    "_id": "719e0a24ab6fbf9954ab2d9c",
+    "createdAt": "2026-11-16T08:50:40.403Z",
+    "updatedAt": "2026-11-16T08:50:40.403Z",
+    "name": "Amit Kumar",
+    "email": "amit.ec@university.edu",
+    "password": "$2b$10$ulkZUOVfHn/ASxENSlyHNe32p/.0MkIolZ8x4uHLxTsjJRFz4aglW",
+    "role": "student",
+    "rollNumber": "EC2022012",
+    "department": "Computer Science & Engineering",
+    "program": "B.Tech",
+    "currentSemester": 5,
+    "phone": "+91 98333 44455",
+    "eligibleBacklogs": [
+      "a408e2b6c487f09958183bf9",
+      "a25cb41a3c98310d76d4cd22"
+    ]
+  }
+]

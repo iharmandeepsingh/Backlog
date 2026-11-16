@@ -1,0 +1,21 @@
+[
+  {
+    "_id": "6ccbc1bda091ea96ec51146d",
+    "createdAt": "2026-11-16T08:50:40.094Z",
+    "updatedAt": "2026-11-16T08:50:40.091Z",
+    "maxTheorySubjects": 4,
+    "theoryFeePerSubject": 500,
+    "nonTheoryFeePerSubject": 300,
+    "baseRegistrationFee": 100,
+    "bankDetails": {
+      "bankName": "State Bank of India (SBI)",
+      "accountHolder": "University Examination Controller General Fund",
+      "accountNumber": "389201948201",
+      "ifscCode": "SBIN0001423",
+      "branch": "Central Campus Branch, New Delhi",
+      "upiId": "university.exam@sbi",
+      "instructions": "Please transfer fee via NEFT/RTGS/IMPS/UPI. Upload clear photo/screenshot of receipt showing UTR / Ref Number."
+    },
+    "updatedBy": "System Seed Initializer"
+  }
+]

@@ -34,27 +34,27 @@ const PrintReceipt = ({ registration, onBack }) => {
       </div>
 
       {/* Official Printable Sheet */}
-      <div className="print-receipt-container bg-white border border-slate-300 rounded-2xl shadow-xl p-8 sm:p-12 text-slate-900">
+      <div className="print-receipt-container bg-white border border-slate-300 rounded shadow-xs p-6 sm:p-10 text-slate-900">
         {/* Header */}
-        <div className="border-b-2 border-slate-900 pb-6 mb-6 text-center">
+        <div className="border-b-2 border-slate-900 pb-5 mb-5 text-center">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
-              <GraduationCap className="w-8 h-8" />
+            <div className="w-10 h-10 rounded bg-slate-900 text-white flex items-center justify-center font-bold">
+              <GraduationCap className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase font-['Outfit']">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">
                 CENTRAL UNIVERSITY EXAMINATION OFFICE
               </h1>
-              <p className="text-xs tracking-wider text-slate-600 font-semibold uppercase">
+              <p className="text-[11px] tracking-wider text-slate-600 font-semibold uppercase">
                 Directorate of Evaluation &bull; Backlog Examination Cell
               </p>
             </div>
           </div>
-          <div className="mt-4 bg-slate-100 py-2 px-4 rounded-lg inline-block border border-slate-200">
-            <h2 className="text-sm font-extrabold tracking-wide text-slate-900 uppercase">
+          <div className="mt-3 bg-slate-100 py-1.5 px-4 rounded inline-block border border-slate-200">
+            <h2 className="text-xs font-bold tracking-wide text-slate-900 uppercase">
               BACKLOG EXAMINATION REGISTRATION ACKNOWLEDGEMENT SLIP
             </h2>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <p className="text-[11px] text-slate-600 mt-0.5">
               Academic Session: <span className="font-bold text-slate-900">{registration.sessionName || 'Winter 2026 Examination'}</span>
             </p>
           </div>

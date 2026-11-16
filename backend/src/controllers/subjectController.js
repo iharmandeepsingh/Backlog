@@ -31,87 +31,108 @@ exports.getAllSubjects = async (req, res) => {
 
 exports.getEligibleBacklogs = async (req, res) => {
   try {
-    const student = req.user;
-    const activeSession = await Session.findOne({ isActive: true });
+    const studentUser = await User.findById(req.user._id);
+    if (!studentUser) {
+      return res.status(404).json({ success: false, message: 'Student profile not found.' });
+    }
 
-    if (!activeSession) {
-      return res.status(400).json({
-        success: false,
-        message: 'No active examination registration session found.'
+    const activeSession = await Session.findOne({ isActive: true });
+    // Determine session type requested (ODD or EVEN) or fallback to active session
+    const requestedType = req.query.sessionType
+      ? req.query.sessionType.toUpperCase()
+      : (activeSession ? activeSession.type : 'ODD');
+
+    const currentSemester = Number(studentUser.currentSemester || 1);
+
+    // Collect all failed subjects explicitly associated with this student
+    const failedIds = new Set((studentUser.eligibleBacklogs || []).map(String));
+    const failedRecords = studentUser.failedSubjectRecords || [];
+
+    failedRecords.forEach(rec => {
+      if (rec.subjectId) failedIds.add(String(rec.subjectId));
+    });
+
+    const failedIdsArray = Array.from(failedIds);
+
+    let failedSubjectsDocs = [];
+    if (failedIdsArray.length > 0) {
+      failedSubjectsDocs = await Subject.find({ _id: { $in: failedIdsArray } });
+    }
+
+    // Check subjects already registered in this active session
+    const alreadyRegisteredSubjectIds = new Set();
+    if (activeSession) {
+      const existingRegistrations = await Registration.find({
+        student: studentUser._id,
+        session: activeSession._id,
+        status: { $ne: 'REJECTED' }
+      });
+      existingRegistrations.forEach(reg => {
+        if (reg.subjects && Array.isArray(reg.subjects)) {
+          reg.subjects.forEach(s => {
+            alreadyRegisteredSubjectIds.add(String(s.subjectId || s._id));
+          });
+        }
       });
     }
 
-    const sessionType = activeSession.type; // 'ODD' or 'EVEN'
+    // Process all failed subjects
+    const allFailedSubjects = [];
+    const eligibleSubjects = [];
 
-    // Determine eligible semesters based on session type:
-    // ODD session: 1, 3, 5, 7
-    // EVEN session: 2, 4, 6, 8
-    const oddSemesters = [1, 3, 5, 7];
-    const evenSemesters = [2, 4, 6, 8];
-    const allowedSemesters = sessionType === 'ODD' ? oddSemesters : evenSemesters;
-
-    // Filter by student's current semester (can only register for subjects in past semesters)
-    const eligibleSemesters = allowedSemesters.filter(sem => sem < student.currentSemester);
-
-    // Also find any subjects explicitly assigned to student in eligibleBacklogs
-    const assignedIds = (student.eligibleBacklogs || []).map(id => String(id));
-
-    // Find subjects matching department and program in eligible semesters
-    const query = {
-      department: student.department,
-      semester: { $in: eligibleSemesters }
-    };
-    if (student.program) {
-      query.program = student.program;
-    }
-
-    let candidateSubjects = await Subject.find(query);
-
-    // Also include any subjects explicitly in student's assigned backlogs if semester matches session type
-    if (assignedIds.length > 0) {
-      const assignedSubjects = await Subject.find({ _id: { $in: assignedIds } });
-      for (const sub of assignedSubjects) {
-        // Enforce session odd/even rule even for assigned backlogs
-        const isOdd = sub.semester % 2 !== 0;
-        const matchesSession = (sessionType === 'ODD' && isOdd) || (sessionType === 'EVEN' && !isOdd);
-        if (matchesSession && !candidateSubjects.some(c => String(c._id) === String(sub._id))) {
-          candidateSubjects.push(sub);
-        }
-      }
-    }
-
-    // Check subjects already registered by the student in this active session
-    const existingRegistrations = await Registration.find({
-      student: student._id,
-      session: activeSession._id,
-      status: { $ne: 'REJECTED' } // if rejected, student might re-register
-    });
-
-    const alreadyRegisteredSubjectIds = new Set();
-    existingRegistrations.forEach(reg => {
-      if (reg.subjects && Array.isArray(reg.subjects)) {
-        reg.subjects.forEach(s => {
-          alreadyRegisteredSubjectIds.add(String(s.subjectId || s._id));
-        });
-      }
-    });
-
-    // Mark subjects with eligibility status and already registered flag
-    const processed = candidateSubjects.map(sub => {
+    for (const sub of failedSubjectsDocs) {
+      const subSem = Number(sub.semester);
+      const isOdd = subSem % 2 !== 0;
+      const isPrevious = subSem < currentSemester;
+      const matchesType = (requestedType === 'ODD' && isOdd) || (requestedType === 'EVEN' && !isOdd);
       const isAlreadyRegistered = alreadyRegisteredSubjectIds.has(String(sub._id));
-      return {
+
+      const failDetail = failedRecords.find(r =>
+        String(r.subjectId) === String(sub._id) || r.code === sub.code
+      );
+
+      const enriched = {
         ...sub,
-        isTheory: sub.type === 'Theory',
+        isTheory: sub.type === 'Theory' || sub.isTheory === true,
+        grade: failDetail?.grade || 'F',
+        marks: failDetail?.totalMarks ?? null,
+        internalMarks: failDetail?.internalMarks ?? null,
+        externalMarks: failDetail?.externalMarks ?? null,
+        maxMarks: failDetail?.maxMarks ?? 100,
+        sourceFile: failDetail?.sourceFile || null,
+        isPrevious,
+        isCurrentSemester: subSem === currentSemester,
+        matchesType,
         isAlreadyRegistered
       };
-    });
+
+      allFailedSubjects.push(enriched);
+
+      // CRITICAL RULE:
+      // 1. Strictly previous semester (< currentSemester) - current semester excluded!
+      // 2. Matches Odd or Even session type
+      // 3. Must be a subject student actually failed in
+      if (isPrevious && matchesType) {
+        eligibleSubjects.push(enriched);
+      }
+    }
+
+    eligibleSubjects.sort((a, b) => a.semester - b.semester || a.code.localeCompare(b.code));
+    allFailedSubjects.sort((a, b) => a.semester - b.semester || a.code.localeCompare(b.code));
 
     res.json({
       success: true,
       activeSession,
-      sessionType,
-      allowedSemesters: eligibleSemesters,
-      eligibleSubjects: processed
+      sessionType: requestedType,
+      currentSemester,
+      studentRollNumber: studentUser.rollNumber,
+      studentName: studentUser.name,
+      department: studentUser.department,
+      program: studentUser.program,
+      eligibleSubjects,
+      allFailedSubjects,
+      eligibleCount: eligibleSubjects.length,
+      totalFailedCount: allFailedSubjects.length
     });
   } catch (error) {
     console.error('Get eligible backlogs error:', error);

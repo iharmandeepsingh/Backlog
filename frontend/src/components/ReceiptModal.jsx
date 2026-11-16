@@ -36,19 +36,17 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4">
+      <div className="bg-white rounded border border-slate-300 shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
-              <FileText className="w-5 h-5" />
-            </div>
+        <div className="px-4 py-3 bg-[#1e3a8a] text-white flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <FileText className="w-5 h-5 text-blue-200" />
             <div>
-              <h3 className="text-base font-bold font-['Outfit']">
+              <h3 className="text-sm font-bold">
                 Payment Proof Verification
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] text-blue-100">
                 Reg No: <span className="text-white font-mono">{registration.registrationNumber}</span> &bull; 
                 Roll: <span className="text-white font-mono">{registration.student?.rollNumber}</span> ({registration.student?.name})
               </p>
@@ -56,34 +54,34 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1 rounded text-blue-200 hover:text-white hover:bg-blue-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Info Strip */}
-        <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div>
-            <span className="text-slate-500 block">Transaction Reference / UTR</span>
+            <span className="text-slate-500 block text-[11px]">Transaction UTR / Ref</span>
             <span className="font-semibold font-mono text-slate-900">{payment.transactionReference || 'N/A'}</span>
           </div>
           <div>
-            <span className="text-slate-500 block">Bank / Payment Mode</span>
+            <span className="text-slate-500 block text-[11px]">Bank / Mode</span>
             <span className="font-semibold text-slate-900">{payment.bankName || payment.method}</span>
           </div>
           <div>
-            <span className="text-slate-500 block">Fee Amount Payable</span>
-            <span className="font-bold text-emerald-700 text-sm">₹ {registration.feeBreakdown?.totalFee || payment.amount}</span>
+            <span className="text-slate-500 block text-[11px]">Fee Payable</span>
+            <span className="font-bold text-slate-900">₹ {registration.feeBreakdown?.totalFee || payment.amount}</span>
           </div>
           <div>
-            <span className="text-slate-500 block">Current Status</span>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+            <span className="text-slate-500 block text-[11px]">Status</span>
+            <span className={`inline-block px-1.5 py-0.2 rounded text-[11px] font-semibold border ${
               payment.status === 'VERIFIED'
-                ? 'bg-emerald-100 text-emerald-800'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                 : payment.status === 'REJECTED'
-                ? 'bg-rose-100 text-rose-800'
-                : 'bg-amber-100 text-amber-800'
+                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200'
             }`}>
               {payment.status}
             </span>
@@ -91,25 +89,25 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
         </div>
 
         {/* Content / Preview Area */}
-        <div className="flex-1 overflow-auto p-6 bg-slate-100 flex flex-col items-center justify-center min-h-[350px]">
+        <div className="flex-1 overflow-auto p-4 bg-slate-100 flex flex-col items-center justify-center min-h-[300px]">
           {receiptUrl ? (
             isPdf ? (
-              <div className="w-full h-96 flex flex-col items-center justify-center bg-white rounded-xl border border-slate-300 p-8 text-center">
-                <FileText className="w-16 h-16 text-red-500 mb-3" />
-                <h4 className="text-base font-semibold text-slate-800">PDF Document Uploaded</h4>
-                <p className="text-xs text-slate-500 mb-4">{payment.receiptOriginalName || 'Transaction_Receipt.pdf'}</p>
+              <div className="w-full h-80 flex flex-col items-center justify-center bg-white rounded border border-slate-300 p-6 text-center">
+                <FileText className="w-12 h-12 text-rose-600 mb-2" />
+                <h4 className="text-sm font-semibold text-slate-800">PDF Document Uploaded</h4>
+                <p className="text-xs text-slate-500 mb-3">{payment.receiptOriginalName || 'Transaction_Receipt.pdf'}</p>
                 <a
                   href={receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                  className="px-3 py-1.5 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded text-xs font-medium flex items-center gap-1.5"
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink className="w-3.5 h-3.5" />
                   Open PDF in New Window
                 </a>
               </div>
             ) : (
-              <div className="relative overflow-auto max-w-full max-h-[500px] flex items-center justify-center border border-slate-300 rounded-xl bg-white p-2 shadow-inner">
+              <div className="relative overflow-auto max-w-full max-h-[480px] flex items-center justify-center border border-slate-300 rounded bg-white p-2">
                 <img
                   src={receiptUrl}
                   alt="Bank Payment Receipt"
@@ -119,29 +117,29 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
               </div>
             )
           ) : (
-            <div className="text-center p-8 bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
-              <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-700">No physical receipt file attached.</p>
-              <p className="text-xs text-slate-500">This registration used online payment gateway or manual reference without image.</p>
+            <div className="text-center p-6 bg-white rounded border border-dashed border-slate-300 text-slate-400">
+              <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-700">No receipt file uploaded.</p>
+              <p className="text-[11px] text-slate-500">Transaction processed via online gateway or direct UTR reference.</p>
             </div>
           )}
         </div>
 
         {/* Zoom & View Controls */}
         {receiptUrl && !isPdf && (
-          <div className="bg-white border-t border-slate-200 px-6 py-2.5 flex items-center justify-between text-xs text-slate-600">
+          <div className="bg-white border-t border-slate-200 px-4 py-2 flex items-center justify-between text-xs text-slate-600">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleZoomOut}
-                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center gap-1"
+                className="p-1 rounded border border-slate-300 hover:bg-slate-100 text-slate-700 cursor-pointer"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="font-mono">{Math.round(zoomLevel * 100)}%</span>
+              <span className="font-mono text-xs">{Math.round(zoomLevel * 100)}%</span>
               <button
                 onClick={handleZoomIn}
-                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center gap-1"
+                className="p-1 rounded border border-slate-300 hover:bg-slate-100 text-slate-700 cursor-pointer"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
@@ -152,18 +150,18 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
               <a
                 href={receiptUrl}
                 download={payment.receiptOriginalName || 'receipt'}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 font-medium text-slate-700 flex items-center gap-1.5"
+                className="px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-100 font-medium text-slate-700 flex items-center gap-1 text-xs"
               >
-                <Download className="w-3.5 h-3.5" />
-                Download Original
+                <Download className="w-3 h-3" />
+                Download
               </a>
               <a
                 href={receiptUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 font-medium text-slate-700 flex items-center gap-1.5"
+                className="px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-100 font-medium text-slate-700 flex items-center gap-1 text-xs"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3 h-3" />
                 Full View
               </a>
             </div>
@@ -172,25 +170,25 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
 
         {/* Admin Action Section */}
         {(onApprove || onReject) && (
-          <div className="p-4 bg-slate-50 border-t border-slate-200">
-            <div className="mb-3">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Admin Verification Remarks / Notes {payment.status === 'REJECTED' && <span className="text-red-500">*</span>}
+          <div className="p-3 bg-slate-50 border-t border-slate-200">
+            <div className="mb-2">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                Admin Verification Remarks {payment.status === 'REJECTED' && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="text"
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="e.g., UTR verified against university account credit. or Incomplete screenshot / UTR not found."
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-blue-700 focus:outline-none"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="px-3 py-1.5 border border-slate-300 rounded text-xs font-medium text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 Close
               </button>
@@ -200,7 +198,7 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
                   type="button"
                   disabled={actionLoading}
                   onClick={() => handleAction('REJECTED')}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Reject Receipt
                 </button>
@@ -211,7 +209,7 @@ const ReceiptModal = ({ isOpen, onClose, registration, onApprove, onReject }) =>
                   type="button"
                   disabled={actionLoading}
                   onClick={() => handleAction('APPROVED')}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Approve Payment

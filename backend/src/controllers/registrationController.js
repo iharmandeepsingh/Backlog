@@ -72,7 +72,35 @@ exports.createRegistration = async (req, res) => {
       });
     }
 
-    // 4. Validate Odd/Even session rule
+    // Refresh student record from DB to get latest eligibleBacklogs and currentSemester
+    const studentUser = await User.findById(student._id);
+    const studentFailedIds = new Set((studentUser?.eligibleBacklogs || []).map(String));
+    (studentUser?.failedSubjectRecords || []).forEach(r => {
+      if (r.subjectId) studentFailedIds.add(String(r.subjectId));
+    });
+
+    const currentSemester = Number(studentUser?.currentSemester || 1);
+
+    // 4. Validate Student Eligibility & Previous Semester Rule
+    for (const sub of subjects) {
+      // Must be a subject where student actually failed
+      if (!studentFailedIds.has(String(sub._id))) {
+        return res.status(400).json({
+          success: false,
+          message: `Ineligible Subject: "${sub.code} - ${sub.name}" is not in your recorded failure/backlog list.`
+        });
+      }
+
+      // Must be strictly previous semester (< currentSemester)
+      if (Number(sub.semester) >= currentSemester) {
+        return res.status(400).json({
+          success: false,
+          message: `Rule Violation: Subject "${sub.name}" is for Semester ${sub.semester}. You are currently in Semester ${currentSemester}. Backlog registration is strictly allowed for previous semesters (current semester regular exams apply).`
+        });
+      }
+    }
+
+    // 5. Validate Odd/Even session rule
     const sessionType = activeSession.type; // 'ODD' or 'EVEN'
     for (const sub of subjects) {
       const isOddSem = sub.semester % 2 !== 0;
@@ -112,8 +140,8 @@ exports.createRegistration = async (req, res) => {
     }
 
     // 6. Enforce Theory Subject Limit vs Non-Theory
-    const theorySubjects = subjects.filter(s => s.type === 'Theory');
-    const nonTheorySubjects = subjects.filter(s => s.type !== 'Theory');
+    const theorySubjects = subjects.filter(s => s.type === 'Theory' || s.isTheory === true);
+    const nonTheorySubjects = subjects.filter(s => s.type !== 'Theory' && s.isTheory !== true);
 
     if (theorySubjects.length > maxTheoryAllowed) {
       return res.status(400).json({

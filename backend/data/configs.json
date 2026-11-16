@@ -1,8 +1,8 @@
 [
   {
-    "_id": "6ccbc1bda091ea96ec51146d",
-    "createdAt": "2026-11-16T08:50:40.094Z",
-    "updatedAt": "2026-11-16T08:50:40.091Z",
+    "_id": "4fd57b2959fee1f3999e6f2b",
+    "createdAt": "2026-11-16T17:17:07.383Z",
+    "updatedAt": "2026-11-16T17:17:07.382Z",
     "maxTheorySubjects": 4,
     "theoryFeePerSubject": 500,
     "nonTheoryFeePerSubject": 300,

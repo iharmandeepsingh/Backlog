@@ -33,7 +33,15 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (loginId, password) => {
+  const login = async (loginIdOrObj, maybePassword) => {
+    let loginId, password;
+    if (typeof loginIdOrObj === 'object' && loginIdOrObj !== null) {
+      loginId = loginIdOrObj.loginId || loginIdOrObj.email || loginIdOrObj.rollNumber;
+      password = loginIdOrObj.password;
+    } else {
+      loginId = loginIdOrObj;
+      password = maybePassword;
+    }
     const res = await authService.login({ loginId, password });
     if (res.success && res.token && res.user) {
       setToken(res.token);

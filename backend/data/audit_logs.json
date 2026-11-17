@@ -37,5 +37,48 @@
     },
     "ip": "::1",
     "timestamp": "2026-11-16T09:37:41.110Z"
+  },
+  {
+    "_id": "42705508cc4c5fd16ed7bc8d",
+    "createdAt": "2026-11-16T13:25:59.013Z",
+    "updatedAt": "2026-11-16T13:25:59.014Z",
+    "action": "STUDENT_REGISTRATION_CREATED",
+    "performedBy": {
+      "id": "c70fbd46d21b0c8aa41de161",
+      "name": "Priya Patel",
+      "email": "priya.cs@university.edu",
+      "role": "student"
+    },
+    "details": {
+      "registrationNumber": "REG-2026-ODD-67025",
+      "sessionId": "e220d8bf8adb996a812c54d8",
+      "theoryCount": 2,
+      "nonTheoryCount": 2,
+      "totalFee": 1700,
+      "paymentMethod": "MANUAL"
+    },
+    "ip": "::1",
+    "timestamp": "2026-11-16T13:25:59.012Z"
+  },
+  {
+    "_id": "57f46d95a1a2dd79fd71d71e",
+    "createdAt": "2026-11-16T13:27:22.151Z",
+    "updatedAt": "2026-11-16T13:27:22.151Z",
+    "action": "PAYMENT_RECEIPT_APPROVED",
+    "performedBy": {
+      "id": "2204413da954d853a1410019",
+      "name": "Dr. Ramesh Sharma",
+      "email": "admin@university.edu",
+      "role": "admin"
+    },
+    "details": {
+      "registrationId": "f5bff5ebca47d5ded844201e",
+      "registrationNumber": "REG-2026-ODD-67025",
+      "previousStatus": "PENDING_VERIFICATION",
+      "newStatus": "VERIFIED",
+      "remarks": "Payment receipt verified and approved by Examination Officer."
+    },
+    "ip": "::1",
+    "timestamp": "2026-11-16T13:27:22.150Z"
   }
 ]

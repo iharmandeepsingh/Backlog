@@ -197,5 +197,84 @@
     },
     "status": "SUBMITTED",
     "submittedAt": "2026-11-16T09:37:41.107Z"
+  },
+  {
+    "_id": "f5bff5ebca47d5ded844201e",
+    "createdAt": "2026-11-16T13:25:59.011Z",
+    "updatedAt": "2026-11-16T13:27:22.149Z",
+    "registrationNumber": "REG-2026-ODD-67025",
+    "student": "c70fbd46d21b0c8aa41de161",
+    "session": "e220d8bf8adb996a812c54d8",
+    "sessionName": "Winter 2026 Examination (Odd Semesters 1, 3, 5)",
+    "sessionType": "ODD",
+    "subjects": [
+      {
+        "subjectId": "a408e2b6c487f09958183bf9",
+        "code": "CS101",
+        "name": "Engineering Mathematics - I",
+        "semester": 1,
+        "type": "Theory",
+        "isTheory": true,
+        "credits": 4,
+        "fee": 500
+      },
+      {
+        "subjectId": "a25cb41a3c98310d76d4cd22",
+        "code": "CS102",
+        "name": "Programming Fundamentals in C",
+        "semester": 1,
+        "type": "Theory",
+        "isTheory": true,
+        "credits": 3,
+        "fee": 500
+      },
+      {
+        "subjectId": "cb0dbe7a3b4759952feefc98",
+        "code": "CS103",
+        "name": "Programming Lab in C",
+        "semester": 1,
+        "type": "Practical",
+        "isTheory": false,
+        "credits": 2,
+        "fee": 300
+      },
+      {
+        "subjectId": "9b265507080ede4205f6d3db",
+        "code": "CS104",
+        "name": "Engineering Physics Lab",
+        "semester": 1,
+        "type": "Lab",
+        "isTheory": false,
+        "credits": 1,
+        "fee": 300
+      }
+    ],
+    "theoryCount": 2,
+    "nonTheoryCount": 2,
+    "feeBreakdown": {
+      "theoryCount": 2,
+      "theoryFeePerSubject": 500,
+      "theoryTotal": 1000,
+      "nonTheoryCount": 2,
+      "nonTheoryFeePerSubject": 300,
+      "nonTheoryTotal": 600,
+      "baseFee": 100,
+      "totalFee": 1700
+    },
+    "payment": {
+      "method": "MANUAL",
+      "amount": 1700,
+      "transactionReference": "6512573945",
+      "bankName": "Canara",
+      "paymentDate": "2026-11-16",
+      "receiptUrl": "/uploads/receipt-KckrAkid22CdjzoVzPICY-1794835558998-683453.jpg",
+      "receiptOriginalName": "KckrAkid22CdjzoVzPICY.jpg",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-11-16T13:27:22.148Z",
+      "verifiedBy": "2204413da954d853a1410019",
+      "rejectionRemarks": "Payment receipt verified and approved by Examination Officer."
+    },
+    "status": "APPROVED",
+    "submittedAt": "2026-11-16T13:25:59.010Z"
   }
 ]

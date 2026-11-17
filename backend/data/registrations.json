@@ -197,5 +197,105 @@
     },
     "status": "SUBMITTED",
     "submittedAt": "2026-11-16T09:37:41.107Z"
+  },
+  {
+    "_id": "e137262be20970dbf04aaec1",
+    "createdAt": "2026-11-17T05:06:43.369Z",
+    "updatedAt": "2026-11-17T06:15:31.272Z",
+    "registrationNumber": "REG-2026-ODD-48132",
+    "student": "86e65bff97c4f5a67a01cd72",
+    "session": "fc4d91fa82b8787100000e2b",
+    "sessionName": "Winter 2026 Examination (Odd Semesters 1, 3, 5)",
+    "sessionType": "ODD",
+    "subjects": [
+      {
+        "subjectId": "d43042666c1cddbc170aaa6d",
+        "code": "23BALB11C01",
+        "name": "Legal Methods & Indian Legal System",
+        "semester": 1,
+        "type": "Theory",
+        "isTheory": true,
+        "credits": 5,
+        "fee": 500
+      }
+    ],
+    "theoryCount": 1,
+    "nonTheoryCount": 0,
+    "feeBreakdown": {
+      "theoryCount": 1,
+      "theoryFeePerSubject": 500,
+      "theoryTotal": 500,
+      "nonTheoryCount": 0,
+      "nonTheoryFeePerSubject": 300,
+      "nonTheoryTotal": 0,
+      "baseFee": 100,
+      "totalFee": 600
+    },
+    "payment": {
+      "method": "MANUAL",
+      "amount": 600,
+      "transactionReference": "6569436823",
+      "bankName": "Canara ",
+      "paymentDate": "2026-11-17",
+      "receiptUrl": "/uploads/receipt-registration_ticket-1794892003358-854414.pdf",
+      "receiptOriginalName": "registration_ticket.pdf",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-11-17T06:15:31.271Z",
+      "verifiedBy": "02d188ca6479719c897853a8",
+      "rejectionRemarks": "Payment receipt verified and approved by Examination Officer."
+    },
+    "status": "APPROVED",
+    "submittedAt": "2026-11-17T05:06:43.368Z"
+  },
+  {
+    "_id": "1d4957026e6bb30cdd70d24a",
+    "createdAt": "2026-11-17T05:10:05.288Z",
+    "updatedAt": "2026-11-17T05:10:41.004Z",
+    "registrationNumber": "REG-2026-ODD-31625",
+    "student": "55b3d6fe39041f9ac8357dda",
+    "session": "fc4d91fa82b8787100000e2b",
+    "sessionName": "Winter 2026 Examination (Odd Semesters 1, 3, 5)",
+    "sessionType": "ODD",
+    "subjects": [
+      {
+        "subjectId": "074131792aac6ac4a949aba2",
+        "code": "23BALB11C02",
+        "name": "Law of Contract - I (General Principles)",
+        "semester": 1,
+        "type": "Theory",
+        "isTheory": true,
+        "credits": 5,
+        "fee": 500
+      }
+    ],
+    "theoryCount": 1,
+    "nonTheoryCount": 0,
+    "feeBreakdown": {
+      "theoryCount": 1,
+      "theoryFeePerSubject": 500,
+      "theoryTotal": 500,
+      "nonTheoryCount": 0,
+      "nonTheoryFeePerSubject": 300,
+      "nonTheoryTotal": 0,
+      "baseFee": 100,
+      "totalFee": 600
+    },
+    "payment": {
+      "method": "ONLINE",
+      "amount": 600,
+      "transactionReference": "pay_rzp_1794892240990_3mimu7",
+      "bankName": "",
+      "paymentDate": "2026-11-17T05:10:05.288Z",
+      "receiptUrl": "",
+      "receiptOriginalName": "",
+      "status": "VERIFIED",
+      "razorpayOrderId": "order_35e536cbbca19496",
+      "razorpayPaymentId": "pay_rzp_1794892240990_3mimu7",
+      "razorpaySignature": "sig_verified_1794892240990",
+      "paidAt": "2026-11-17T05:10:41.004Z",
+      "verifiedAt": "2026-11-17T05:10:41.004Z"
+    },
+    "status": "APPROVED",
+    "submittedAt": "2026-11-17T05:10:05.288Z"
   }
 ]

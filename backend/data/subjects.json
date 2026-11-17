@@ -24,5 +24,18 @@
     "program": "B.A., LL.B",
     "type": "Theory",
     "isTheory": true
+  },
+  {
+    "_id": "a812736a08d6c3852f451c6d",
+    "createdAt": "2026-11-17T08:26:48.465Z",
+    "updatedAt": "2026-11-17T08:26:48.465Z",
+    "code": "26816",
+    "name": "Law",
+    "semester": 1,
+    "credits": 3,
+    "department": "Computer Science & Engineering",
+    "program": "B.Tech",
+    "type": "Theory",
+    "isTheory": true
   }
 ]

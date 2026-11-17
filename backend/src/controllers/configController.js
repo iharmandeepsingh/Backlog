@@ -6,6 +6,13 @@ const DEFAULT_CONFIG = {
   theoryFeePerSubject: 500,
   nonTheoryFeePerSubject: 300,
   baseRegistrationFee: 100,
+  // Special / Supplementary Examination Fee Configuration
+  specialTheoryFeePerSubject: 1000,
+  specialNonTheoryFeePerSubject: 600,
+  specialBaseRegistrationFee: 200,
+  specialMaxTheorySubjects: 6,
+  allowSpecialExamRegistration: true,
+  specialExamInstructions: 'Special / Supplementary Examination permits eligible students to clear backlogs across both Odd and Even semesters simultaneously.',
   bankDetails: {
     bankName: 'State Bank of India (SBI)',
     accountHolder: 'University Examination Controller Account',
@@ -25,9 +32,44 @@ const getOrCreateConfig = async () => {
       updatedBy: 'System Initializer',
       updatedAt: new Date().toISOString()
     });
+  } else {
+    // Ensure all special fee fields exist if older config
+    let needsUpdate = false;
+    const updates = {};
+    if (config.specialTheoryFeePerSubject === undefined) {
+      updates.specialTheoryFeePerSubject = DEFAULT_CONFIG.specialTheoryFeePerSubject;
+      needsUpdate = true;
+    }
+    if (config.specialNonTheoryFeePerSubject === undefined) {
+      updates.specialNonTheoryFeePerSubject = DEFAULT_CONFIG.specialNonTheoryFeePerSubject;
+      needsUpdate = true;
+    }
+    if (config.specialBaseRegistrationFee === undefined) {
+      updates.specialBaseRegistrationFee = DEFAULT_CONFIG.specialBaseRegistrationFee;
+      needsUpdate = true;
+    }
+    if (config.specialMaxTheorySubjects === undefined) {
+      updates.specialMaxTheorySubjects = DEFAULT_CONFIG.specialMaxTheorySubjects;
+      needsUpdate = true;
+    }
+    if (config.allowSpecialExamRegistration === undefined) {
+      updates.allowSpecialExamRegistration = true;
+      needsUpdate = true;
+    }
+    if (config.specialExamInstructions === undefined) {
+      updates.specialExamInstructions = DEFAULT_CONFIG.specialExamInstructions;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      config = await Config.findByIdAndUpdate(config._id, updates, { new: true });
+    }
   }
   return config;
 };
+
+exports.DEFAULT_CONFIG = DEFAULT_CONFIG;
+exports.getOrCreateConfig = getOrCreateConfig;
 
 exports.getConfig = async (req, res) => {
   try {
@@ -46,6 +88,12 @@ exports.updateConfig = async (req, res) => {
       theoryFeePerSubject,
       nonTheoryFeePerSubject,
       baseRegistrationFee,
+      specialTheoryFeePerSubject,
+      specialNonTheoryFeePerSubject,
+      specialBaseRegistrationFee,
+      specialMaxTheorySubjects,
+      allowSpecialExamRegistration,
+      specialExamInstructions,
       bankDetails
     } = req.body;
 
@@ -55,7 +103,11 @@ exports.updateConfig = async (req, res) => {
       maxTheorySubjects: config.maxTheorySubjects,
       theoryFeePerSubject: config.theoryFeePerSubject,
       nonTheoryFeePerSubject: config.nonTheoryFeePerSubject,
-      baseRegistrationFee: config.baseRegistrationFee
+      baseRegistrationFee: config.baseRegistrationFee,
+      specialTheoryFeePerSubject: config.specialTheoryFeePerSubject,
+      specialNonTheoryFeePerSubject: config.specialNonTheoryFeePerSubject,
+      specialBaseRegistrationFee: config.specialBaseRegistrationFee,
+      specialMaxTheorySubjects: config.specialMaxTheorySubjects
     };
 
     const updates = {};
@@ -91,6 +143,47 @@ exports.updateConfig = async (req, res) => {
       updates.baseRegistrationFee = fee;
     }
 
+    // Special Exam configurations
+    if (specialTheoryFeePerSubject !== undefined) {
+      const fee = Number(specialTheoryFeePerSubject);
+      if (isNaN(fee) || fee < 0) {
+        return res.status(400).json({ success: false, message: 'Special theory fee must be a non-negative number.' });
+      }
+      updates.specialTheoryFeePerSubject = fee;
+    }
+
+    if (specialNonTheoryFeePerSubject !== undefined) {
+      const fee = Number(specialNonTheoryFeePerSubject);
+      if (isNaN(fee) || fee < 0) {
+        return res.status(400).json({ success: false, message: 'Special non-theory fee must be a non-negative number.' });
+      }
+      updates.specialNonTheoryFeePerSubject = fee;
+    }
+
+    if (specialBaseRegistrationFee !== undefined) {
+      const fee = Number(specialBaseRegistrationFee);
+      if (isNaN(fee) || fee < 0) {
+        return res.status(400).json({ success: false, message: 'Special base fee must be a non-negative number.' });
+      }
+      updates.specialBaseRegistrationFee = fee;
+    }
+
+    if (specialMaxTheorySubjects !== undefined) {
+      const num = Number(specialMaxTheorySubjects);
+      if (isNaN(num) || num < 1) {
+        return res.status(400).json({ success: false, message: 'Special max theory subjects must be at least 1.' });
+      }
+      updates.specialMaxTheorySubjects = num;
+    }
+
+    if (allowSpecialExamRegistration !== undefined) {
+      updates.allowSpecialExamRegistration = Boolean(allowSpecialExamRegistration);
+    }
+
+    if (specialExamInstructions !== undefined) {
+      updates.specialExamInstructions = specialExamInstructions.trim();
+    }
+
     if (bankDetails) {
       updates.bankDetails = {
         ...config.bankDetails,
@@ -113,7 +206,11 @@ exports.updateConfig = async (req, res) => {
           maxTheorySubjects: updated.maxTheorySubjects,
           theoryFeePerSubject: updated.theoryFeePerSubject,
           nonTheoryFeePerSubject: updated.nonTheoryFeePerSubject,
-          baseRegistrationFee: updated.baseRegistrationFee
+          baseRegistrationFee: updated.baseRegistrationFee,
+          specialTheoryFeePerSubject: updated.specialTheoryFeePerSubject,
+          specialNonTheoryFeePerSubject: updated.specialNonTheoryFeePerSubject,
+          specialBaseRegistrationFee: updated.specialBaseRegistrationFee,
+          specialMaxTheorySubjects: updated.specialMaxTheorySubjects
         }
       },
       req
@@ -121,7 +218,7 @@ exports.updateConfig = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'System configuration updated successfully.',
+      message: 'System configuration and special exam fees updated successfully.',
       config: updated
     });
   } catch (error) {

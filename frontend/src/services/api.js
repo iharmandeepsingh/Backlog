@@ -81,6 +81,10 @@ export const sessionService = {
     const res = await api.put(`/sessions/${id}`, sessionData);
     return res.data;
   },
+  extendSession: async (id, data) => {
+    const res = await api.patch(`/sessions/${id}/extend`, data);
+    return res.data;
+  },
   deleteSession: async (id) => {
     const res = await api.delete(`/sessions/${id}`);
     return res.data;

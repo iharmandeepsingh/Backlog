@@ -16,6 +16,7 @@ import {
   Layers,
   FileCheck,
   Lock,
+  Clock,
   ArrowLeft
 } from 'lucide-react';
 import PaymentGatewayModal from '../components/PaymentGatewayModal';
@@ -65,13 +66,16 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
         setConfig(confRes.config);
       }
 
-      // 2. Fetch eligible backlogs with requested semester type (ODD or EVEN)
+      // 2. Fetch eligible backlogs with requested semester type (ODD, EVEN, or SPECIAL)
       const typeToQuery = targetType || selectedSemesterType;
       const subRes = await subjectService.getEligibleBacklogs(typeToQuery);
       if (subRes.success) {
         setActiveSession(subRes.activeSession);
-        setSessionType(subRes.sessionType);
-        setSelectedSemesterType(subRes.sessionType);
+        const sType = subRes.activeSession?.type || subRes.sessionType || 'ODD';
+        setSessionType(sType);
+        if (!targetType) {
+          setSelectedSemesterType(sType);
+        }
         setEligibleSubjects(subRes.eligibleSubjects || []);
         if (subRes.currentSemester) {
           setCurrentSemester(subRes.currentSemester);
@@ -91,18 +95,25 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
     loadData(newType);
   };
 
+  const isSpecialExam = sessionType === 'SPECIAL' || activeSession?.type === 'SPECIAL' || selectedSemesterType === 'SPECIAL';
+
   // Separate Theory vs Non-Theory
   const selectedSubjectsList = eligibleSubjects.filter(s => selectedSubjectIds.includes(s._id));
   const selectedTheoryCount = selectedSubjectsList.filter(s => s.isTheory).length;
   const selectedNonTheoryCount = selectedSubjectsList.filter(s => !s.isTheory).length;
 
-  const maxTheoryAllowed = config.maxTheorySubjects || 4;
+  // Real-time Fee Calculation (Special Exam rates apply during Special sessions)
+  const theoryFeeRate = activeSession?.theoryFeeOverride ?? (isSpecialExam ? (config.specialTheoryFeePerSubject ?? 1000) : (config.theoryFeePerSubject ?? 500));
+  const nonTheoryFeeRate = activeSession?.nonTheoryFeeOverride ?? (isSpecialExam ? (config.specialNonTheoryFeePerSubject ?? 600) : (config.nonTheoryFeePerSubject ?? 300));
+  const baseFee = activeSession?.baseFeeOverride ?? (isSpecialExam ? (config.specialBaseRegistrationFee ?? 200) : (config.baseRegistrationFee ?? 100));
+
+  const maxTheoryAllowed = activeSession?.maxTheorySubjectsOverride ?? (isSpecialExam ? (config.specialMaxTheorySubjects ?? 6) : (config.maxTheorySubjects ?? 4));
   const isTheoryLimitReached = selectedTheoryCount >= maxTheoryAllowed;
 
-  // Real-time Fee Calculation
-  const theoryFeeRate = config.theoryFeePerSubject || 500;
-  const nonTheoryFeeRate = config.nonTheoryFeePerSubject || 300;
-  const baseFee = config.baseRegistrationFee || 100;
+  const now = new Date();
+  const startDate = activeSession?.startDate ? new Date(activeSession.startDate) : null;
+  const endDate = activeSession?.endDate ? new Date(activeSession.endDate) : null;
+  const isWindowOpen = activeSession && activeSession.isActive && (!startDate || now >= startDate) && (!endDate || now <= endDate);
 
   const theoryTotal = selectedTheoryCount * theoryFeeRate;
   const nonTheoryTotal = selectedNonTheoryCount * nonTheoryFeeRate;
@@ -142,6 +153,11 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isWindowOpen) {
+      setError('The examination registration window is currently closed for this session. Submissions are not accepted.');
+      return;
+    }
+
     if (selectedSubjectIds.length === 0) {
       setError('Please select at least one backlog subject to register.');
       return;
@@ -216,38 +232,112 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
       {/* Session Header Card */}
       <div className="bg-white rounded border border-slate-300 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-blue-50 text-blue-900 border border-blue-200">
-              {sessionType} SEMESTER SESSION
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {isSpecialExam ? (
+              <span className="px-2.5 py-0.5 rounded text-[11px] font-extrabold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                ⭐ SPECIAL EXAMINATION SESSION (ODD &amp; EVEN)
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-blue-50 text-blue-900 border border-blue-200">
+                {sessionType} SEMESTER SESSION
+              </span>
+            )}
             <span className="text-xs text-slate-500 font-mono">Academic Year {activeSession?.academicYear || '2026-2027'}</span>
+            {isWindowOpen ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                🟢 Window Open
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200">
+                🔒 Closed
+              </span>
+            )}
           </div>
           <h1 className="text-xl font-bold text-slate-900 mt-1">
             {activeSession?.name || 'Backlog Examination Registration'}
           </h1>
           <p className="text-xs text-slate-600 mt-0.5">
-            Select your eligible backlog subjects below. Odd sessions permit only past odd semester failures (Sem 1, 3, 5, 7); Even sessions permit only past even semester failures (Sem 2, 4, 6, 8).
+            {isSpecialExam
+              ? 'Special Examination: You can register for failed subjects across BOTH Odd and Even semesters simultaneously.'
+              : 'Select your eligible backlog subjects below. Odd sessions permit only past odd semester failures (Sem 1, 3, 5, 7); Even sessions permit only past even semester failures (Sem 2, 4, 6, 8).'}
           </p>
+
+          {/* Session Timing / Dates */}
+          {activeSession && (
+            <div className="mt-2 text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>
+                <strong>Opening Date:</strong> {new Date(activeSession.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+              </span>
+              <span>&bull;</span>
+              <span>
+                <strong>Closing Deadline:</strong> <span className="font-bold text-slate-900">{new Date(activeSession.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              </span>
+            </div>
+          )}
+
+          {/* Extension Notice */}
+          {activeSession?.isExtended && (
+            <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-300 text-xs text-amber-950 flex items-start gap-1.5">
+              <span>🔔</span>
+              <div>
+                <span className="font-bold">Deadline Extended by Admin:</span> Open until{' '}
+                <strong>{new Date(activeSession.extendedDate || activeSession.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</strong>.
+                {activeSession.extensionReason && (
+                  <span className="block text-[11px] text-amber-800 mt-0.5 font-medium">
+                    Order / Circular: {activeSession.extensionReason}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isWindowOpen && (
+            <div className="mt-2 p-2.5 rounded bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+              <Lock className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>
+                {startDate && now < startDate
+                  ? `Registration portal opens on ${startDate.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}. Submissions are currently disabled.`
+                  : `The examination registration deadline has passed (${endDate?.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}). Submissions are now closed.`}
+              </span>
+            </div>
+          )}
         </div>
 
         <button
           type="button"
           onClick={onCancel}
-          className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-xs font-medium flex items-center gap-1.5 self-start md:self-center cursor-pointer"
+          className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-xs font-medium flex items-center gap-1.5 self-start md:self-center cursor-pointer shrink-0"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to Dashboard</span>
         </button>
       </div>
 
-      {/* Odd / Even Session Switcher & Academic Standing Rule Banner */}
+      {/* Odd / Even / Special Session Switcher & Academic Standing Rule Banner */}
       <div className="bg-white rounded border border-slate-300 p-4 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">
-              Select Examination Parity
+              Select Examination Parity / Scope
             </span>
-            <div className="inline-flex rounded border border-slate-300 p-0.5 bg-slate-100">
+            <div className="inline-flex rounded border border-slate-300 p-0.5 bg-slate-100 flex-wrap gap-1">
+              {isSpecialExam && (
+                <button
+                  type="button"
+                  onClick={() => handleSwitchSemesterType('SPECIAL')}
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                    selectedSemesterType === 'SPECIAL'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                >
+                  ⭐ All Semesters (Odd &amp; Even)
+                  <span className="ml-1.5 text-[9px] bg-amber-100 text-amber-900 px-1 py-0.2 rounded font-bold uppercase">
+                    Special Exam
+                  </span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => handleSwitchSemesterType('ODD')}
@@ -301,9 +391,16 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
         <div className="bg-amber-50 border border-amber-200 rounded p-2.5 text-xs text-amber-900 flex items-start gap-2">
           <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>Examination Standing Rule:</strong> You are currently enrolled in <strong>Semester {currentSemester}</strong>. 
-            Only verified failed subjects from <strong>strictly previous {selectedSemesterType === 'ODD' ? 'Odd' : 'Even'} semesters</strong> ({selectedSemesterType === 'ODD' ? '1, 3, 5...' : '2, 4, 6...'} strictly less than Semester {currentSemester}) are eligible. 
-            Current regular semester ({currentSemester}) subjects are excluded because regular examinations are conducted for them.
+            <strong>Examination Standing Rule:</strong> You are currently enrolled in <strong>Semester {currentSemester}</strong>.{' '}
+            {selectedSemesterType === 'SPECIAL' ? (
+              <span>
+                In this <strong>Special Examination Session</strong>, you are eligible to register for verified failed subjects across <strong>ALL strictly previous semesters (both Odd and Even: Semesters 1 through {currentSemester - 1})</strong>. Current regular semester ({currentSemester}) subjects are excluded because regular examinations are conducted for them.
+              </span>
+            ) : (
+              <span>
+                Only verified failed subjects from <strong>strictly previous {selectedSemesterType === 'ODD' ? 'Odd' : 'Even'} semesters</strong> ({selectedSemesterType === 'ODD' ? '1, 3, 5...' : '2, 4, 6...'} strictly less than Semester {currentSemester}) are eligible. Current regular semester ({currentSemester}) subjects are excluded.
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -487,7 +584,13 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
           <div className="bg-white rounded border border-slate-300 shadow-xs p-4 sticky top-16">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-2 flex items-center justify-between">
               <span>Fee Calculation Slip</span>
-              <span className="text-[11px] text-[#1e3a8a] font-normal lowercase">official rates</span>
+              {isSpecialExam ? (
+                <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-bold uppercase border border-amber-300">
+                  Special Exam Rates
+                </span>
+              ) : (
+                <span className="text-[11px] text-[#1e3a8a] font-normal lowercase">official rates</span>
+              )}
             </h2>
 
             {/* Selection Breakdown */}
@@ -629,11 +732,16 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
               {/* Submit Button */}
               <button
                 type="button"
-                disabled={submitting || selectedSubjectsList.length === 0}
+                disabled={submitting || selectedSubjectsList.length === 0 || !isWindowOpen}
                 onClick={handleSubmit}
                 className="w-full mt-3 py-2.5 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {submitting ? (
+                {!isWindowOpen ? (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Registration Window Closed</span>
+                  </>
+                ) : submitting ? (
                   'Submitting Application...'
                 ) : paymentMethod === 'ONLINE' ? (
                   <>

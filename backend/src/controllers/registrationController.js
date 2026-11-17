@@ -41,12 +41,22 @@ exports.createRegistration = async (req, res) => {
       });
     }
 
-    // Check session date validity
+    // Check session date & time validity
     const now = new Date();
-    if (new Date(activeSession.startDate) > now || new Date(activeSession.endDate) < now) {
+    const startDate = new Date(activeSession.startDate);
+    const endDate = new Date(activeSession.endDate);
+
+    if (now < startDate) {
       return res.status(400).json({
         success: false,
-        message: 'Examination registration is not currently open for the active session dates.'
+        message: `Registration has not opened yet. Registration opens on ${startDate.toLocaleString()}.`
+      });
+    }
+
+    if (now > endDate) {
+      return res.status(400).json({
+        success: false,
+        message: `Examination registration window is closed. The deadline was ${endDate.toLocaleString()}.${activeSession.isExtended ? ` (Note: Previously extended to ${new Date(activeSession.extendedDate).toLocaleString()})` : ''} Please contact the examination controller.`
       });
     }
 
@@ -57,11 +67,23 @@ exports.createRegistration = async (req, res) => {
         maxTheorySubjects: 4,
         theoryFeePerSubject: 500,
         nonTheoryFeePerSubject: 300,
-        baseRegistrationFee: 100
+        baseRegistrationFee: 100,
+        specialTheoryFeePerSubject: 1000,
+        specialNonTheoryFeePerSubject: 600,
+        specialBaseRegistrationFee: 200,
+        specialMaxTheorySubjects: 6
       };
     }
 
-    const maxTheoryAllowed = config.maxTheorySubjects || 4;
+    const sessionType = (activeSession.type || 'ODD').toUpperCase();
+    const isSpecialSession = sessionType === 'SPECIAL';
+
+    // Dynamic fee rates and theory limits:
+    // Prioritize session-specific overrides, then special config (if special session), then standard config
+    const theoryFee = activeSession.theoryFeeOverride ?? (isSpecialSession ? (config.specialTheoryFeePerSubject ?? 1000) : (config.theoryFeePerSubject ?? 500));
+    const nonTheoryFee = activeSession.nonTheoryFeeOverride ?? (isSpecialSession ? (config.specialNonTheoryFeePerSubject ?? 600) : (config.nonTheoryFeePerSubject ?? 300));
+    const baseFee = activeSession.baseFeeOverride ?? (isSpecialSession ? (config.specialBaseRegistrationFee ?? 200) : (config.baseRegistrationFee ?? 100));
+    const maxTheoryAllowed = activeSession.maxTheorySubjectsOverride ?? (isSpecialSession ? (config.specialMaxTheorySubjects ?? 6) : (config.maxTheorySubjects ?? 4));
 
     // 3. Fetch all selected subjects from DB
     const subjects = await Subject.find({ _id: { $in: selectedIds } });
@@ -100,25 +122,26 @@ exports.createRegistration = async (req, res) => {
       }
     }
 
-    // 5. Validate Odd/Even session rule
-    const sessionType = activeSession.type; // 'ODD' or 'EVEN'
-    for (const sub of subjects) {
-      const isOddSem = sub.semester % 2 !== 0;
-      if (sessionType === 'ODD' && !isOddSem) {
-        return res.status(400).json({
-          success: false,
-          message: `Rule Violation: Subject "${sub.name}" (Sem ${sub.semester}) is an Even semester subject. Only Odd semester subjects (1, 3, 5, 7) are permitted during ${activeSession.name}.`
-        });
-      }
-      if (sessionType === 'EVEN' && isOddSem) {
-        return res.status(400).json({
-          success: false,
-          message: `Rule Violation: Subject "${sub.name}" (Sem ${sub.semester}) is an Odd semester subject. Only Even semester subjects (2, 4, 6, 8) are permitted during ${activeSession.name}.`
-        });
+    // 5. Validate Odd/Even session rule (Bypassed if SPECIAL session!)
+    if (!isSpecialSession) {
+      for (const sub of subjects) {
+        const isOddSem = sub.semester % 2 !== 0;
+        if (sessionType === 'ODD' && !isOddSem) {
+          return res.status(400).json({
+            success: false,
+            message: `Rule Violation: Subject "${sub.name}" (Sem ${sub.semester}) is an Even semester subject. Only Odd semester subjects (1, 3, 5, 7) are permitted during ${activeSession.name}.`
+          });
+        }
+        if (sessionType === 'EVEN' && isOddSem) {
+          return res.status(400).json({
+            success: false,
+            message: `Rule Violation: Subject "${sub.name}" (Sem ${sub.semester}) is an Odd semester subject. Only Even semester subjects (2, 4, 6, 8) are permitted during ${activeSession.name}.`
+          });
+        }
       }
     }
 
-    // 5. Validate Duplicate Subject Registration in same session
+    // 5b. Validate Duplicate Subject Registration in same session
     const existingRegistrations = await Registration.find({
       student: student._id,
       session: activeSession._id,
@@ -146,20 +169,17 @@ exports.createRegistration = async (req, res) => {
     if (theorySubjects.length > maxTheoryAllowed) {
       return res.status(400).json({
         success: false,
-        message: `Theory Limit Exceeded: You have selected ${theorySubjects.length} theory subjects. The maximum allowed limit is ${maxTheoryAllowed} theory subjects per registration.`
+        message: `Theory Limit Exceeded: You have selected ${theorySubjects.length} theory subjects. The maximum allowed limit is ${maxTheoryAllowed} theory subjects for this ${isSpecialSession ? 'Special' : 'Regular'} registration.`
       });
     }
 
     // 7. Calculate Fees using Active Config Snapshot
-    const theoryFee = (config.theoryFeePerSubject !== undefined ? config.theoryFeePerSubject : 500);
-    const nonTheoryFee = (config.nonTheoryFeePerSubject !== undefined ? config.nonTheoryFeePerSubject : 300);
-    const baseFee = (config.baseRegistrationFee !== undefined ? config.baseRegistrationFee : 100);
-
     const theoryTotal = theorySubjects.length * theoryFee;
     const nonTheoryTotal = nonTheorySubjects.length * nonTheoryFee;
     const totalFee = theoryTotal + nonTheoryTotal + baseFee;
 
     const feeBreakdown = {
+      isSpecialExam: isSpecialSession,
       theoryCount: theorySubjects.length,
       theoryFeePerSubject: theoryFee,
       theoryTotal,
@@ -215,6 +235,7 @@ exports.createRegistration = async (req, res) => {
       session: activeSession._id,
       sessionName: activeSession.name,
       sessionType: activeSession.type,
+      isSpecialExam: isSpecialSession,
       subjects: storedSubjects,
       theoryCount: theorySubjects.length,
       nonTheoryCount: nonTheorySubjects.length,

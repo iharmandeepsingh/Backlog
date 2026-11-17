@@ -140,10 +140,11 @@ const StudentDashboard = ({ onNavigateToRegister, onSelectRegistrationToPrint })
             <button
               onClick={onNavigateToRegister}
               disabled={!sessionOpen}
-              className="px-4 py-2 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              title={sessionOpen ? 'Apply for backlog examination' : 'Registration window is currently closed'}
+              className="px-4 py-2 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
             >
               <FileText className="w-4 h-4" />
-              <span>Apply for Backlog Exam</span>
+              <span>{sessionOpen ? 'Apply for Backlog Exam' : 'Registration Window Closed'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -152,42 +153,101 @@ const StudentDashboard = ({ onNavigateToRegister, onSelectRegistrationToPrint })
 
       {/* Session Alert & Rules Bar */}
       {activeSession ? (
-        <div className="bg-white rounded border border-slate-300 p-4 shadow-xs space-y-3">
+        <div className="bg-white rounded border border-slate-300 p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded bg-slate-100 border border-slate-300 flex items-center justify-center text-[#1e3a8a] shrink-0">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 mt-0.5 ${
+                activeSession.type === 'SPECIAL'
+                  ? 'bg-amber-50 text-amber-700 border-amber-300'
+                  : 'bg-slate-100 text-[#1e3a8a] border-slate-300'
+              }`}>
                 <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-900 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-base">
                     Active Session: {activeSession.name}
                   </h3>
-                  <span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">
-                    {activeSession.type} SEMESTERS ONLY
+                  {activeSession.type === 'SPECIAL' ? (
+                    <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                      ⭐ SPECIAL EXAMINATION (BOTH ODD &amp; EVEN SEMESTERS)
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">
+                      {activeSession.type} SEMESTERS ONLY
+                    </span>
+                  )}
+
+                  {sessionOpen ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      🟢 Portal Open &bull; Accepting Applications
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200">
+                      🔒 Window Closed
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span>
+                    <strong>Opens:</strong> {new Date(activeSession.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                  <span>&bull;</span>
+                  <span>
+                    <strong>Closing Deadline:</strong> <span className="font-bold text-slate-900">{new Date(activeSession.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Registration Window: {new Date(activeSession.startDate).toLocaleDateString()} to {new Date(activeSession.endDate).toLocaleDateString()}
-                  {sessionOpen ? ' (Portal Open)' : ' (Portal Closed)'}
-                </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-300 px-3 py-1.5 rounded text-xs text-slate-700 flex items-center gap-2">
+            <div className="bg-slate-50 border border-slate-300 px-3.5 py-2 rounded text-xs text-slate-700 flex items-center gap-2 shrink-0">
               <BookOpen className="w-4 h-4 text-[#1e3a8a]" />
-              <span>
-                Available Backlogs: <strong className="text-slate-900">{eligibleCount} subjects</strong>
-              </span>
+              <div>
+                <span className="text-[10px] text-slate-500 block">Eligible Backlogs</span>
+                <span className="font-bold text-slate-900 text-sm">{eligibleCount} subjects</span>
+              </div>
             </div>
           </div>
 
-          <div className="p-2.5 rounded bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-            <span>
-              <strong>Examination Rule:</strong> In this <strong>{activeSession.type} Semester Session</strong>, 
-              only failed subjects from past {activeSession.type === 'ODD' ? 'Odd (1, 3, 5, 7)' : 'Even (2, 4, 6, 8)'} semesters strictly prior to your current semester (Semester {currentSemester}) are eligible. Theory subjects are capped at maximum 4 papers; practical/clinical subjects have no limit.
-            </span>
+          {/* Extension Notice if Deadline Extended */}
+          {activeSession.isExtended && (
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-950 flex items-start gap-2 animate-in fade-in">
+              <span className="text-base">🔔</span>
+              <div>
+                <span className="font-bold">Deadline Extended by Examination Authority:</span>{' '}
+                <span>
+                  The submission window has been extended until <strong>{new Date(activeSession.extendedDate || activeSession.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</strong>.
+                </span>
+                {activeSession.extensionReason && (
+                  <p className="text-[11px] text-amber-800 mt-0.5 font-medium">
+                    Order / Circular: {activeSession.extensionReason}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Examination Rules Banner */}
+          <div className={`p-3 rounded text-xs flex items-start gap-2.5 ${
+            activeSession.type === 'SPECIAL'
+              ? 'bg-purple-50/70 border border-purple-200 text-purple-950'
+              : 'bg-amber-50 border border-amber-200 text-amber-900'
+          }`}>
+            <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
+              activeSession.type === 'SPECIAL' ? 'text-purple-700' : 'text-amber-700'
+            }`} />
+            <div>
+              {activeSession.type === 'SPECIAL' ? (
+                <>
+                  <strong className="font-bold">Special Examination Ordinance:</strong> In this <strong>Special Examination Session</strong>, you are permitted to select and clear backlog papers across <strong>BOTH Odd and Even Semesters</strong> (Semesters 1 through 8 strictly prior to your current Semester {currentSemester}). You can fill odd and even backlog subjects simultaneously in a single application.
+                </>
+              ) : (
+                <>
+                  <strong className="font-bold">Examination Rule:</strong> In this <strong>{activeSession.type} Semester Session</strong>, only failed subjects from past {activeSession.type === 'ODD' ? 'Odd (1, 3, 5, 7)' : 'Even (2, 4, 6, 8)'} semesters strictly prior to your current semester (Semester {currentSemester}) are eligible. Theory subjects are capped per university limit; practical/clinical subjects have no numerical cap.
+                </>
+              )}
+            </div>
           </div>
         </div>
       ) : (

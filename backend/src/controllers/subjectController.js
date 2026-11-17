@@ -79,12 +79,14 @@ exports.getEligibleBacklogs = async (req, res) => {
     // Process all failed subjects
     const allFailedSubjects = [];
     const eligibleSubjects = [];
+    const isSpecial = (requestedType === 'SPECIAL' || (activeSession && activeSession.type === 'SPECIAL'));
 
     for (const sub of failedSubjectsDocs) {
       const subSem = Number(sub.semester);
       const isOdd = subSem % 2 !== 0;
       const isPrevious = subSem < currentSemester;
-      const matchesType = (requestedType === 'ODD' && isOdd) || (requestedType === 'EVEN' && !isOdd);
+      // In SPECIAL session, student can fill ANY backlog of BOTH odd and even semesters
+      const matchesType = isSpecial || (requestedType === 'ODD' && isOdd) || (requestedType === 'EVEN' && !isOdd);
       const isAlreadyRegistered = alreadyRegisteredSubjectIds.has(String(sub._id));
 
       const failDetail = failedRecords.find(r =>
@@ -124,6 +126,8 @@ exports.getEligibleBacklogs = async (req, res) => {
       success: true,
       activeSession,
       sessionType: requestedType,
+      isSpecialExam: isSpecial,
+      allowAllSemesters: isSpecial,
       currentSemester,
       studentRollNumber: studentUser.rollNumber,
       studentName: studentUser.name,

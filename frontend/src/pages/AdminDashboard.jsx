@@ -85,6 +85,12 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
     theoryFeePerSubject: 500,
     nonTheoryFeePerSubject: 300,
     baseRegistrationFee: 100,
+    specialTheoryFeePerSubject: 1000,
+    specialNonTheoryFeePerSubject: 600,
+    specialBaseRegistrationFee: 200,
+    specialMaxTheorySubjects: 6,
+    allowSpecialExamRegistration: true,
+    specialExamInstructions: '',
     bankDetails: {
       bankName: '',
       accountNumber: '',
@@ -92,6 +98,12 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       upiId: ''
     }
   });
+
+  // Deadline Extension Modal state
+  const [selectedSessionForExtend, setSelectedSessionForExtend] = useState(null);
+  const [extendDate, setExtendDate] = useState('');
+  const [extendReason, setExtendReason] = useState('');
+  const [extending, setExtending] = useState(false);
 
   // Assign Backlogs Modal
   const [selectedStudentForBacklogs, setSelectedStudentForBacklogs] = useState(null);
@@ -138,6 +150,12 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           theoryFeePerSubject: confRes.config.theoryFeePerSubject || 500,
           nonTheoryFeePerSubject: confRes.config.nonTheoryFeePerSubject || 300,
           baseRegistrationFee: confRes.config.baseRegistrationFee || 100,
+          specialTheoryFeePerSubject: confRes.config.specialTheoryFeePerSubject || 1000,
+          specialNonTheoryFeePerSubject: confRes.config.specialNonTheoryFeePerSubject || 600,
+          specialBaseRegistrationFee: confRes.config.specialBaseRegistrationFee || 200,
+          specialMaxTheorySubjects: confRes.config.specialMaxTheorySubjects || 6,
+          allowSpecialExamRegistration: confRes.config.allowSpecialExamRegistration ?? true,
+          specialExamInstructions: confRes.config.specialExamInstructions || '',
           bankDetails: confRes.config.bankDetails || {}
         });
       }
@@ -230,6 +248,45 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       }
     } catch (err) {
       alert('Error toggling session: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // Open Deadline Extension Modal
+  const handleOpenExtendModal = (session) => {
+    setSelectedSessionForExtend(session);
+    try {
+      const dateObj = new Date(session.endDate);
+      const tzOffset = dateObj.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(dateObj.getTime() - tzOffset)).toISOString().slice(0, 16);
+      setExtendDate(localISOTime);
+    } catch (e) {
+      setExtendDate('');
+    }
+    setExtendReason('');
+  };
+
+  // Save Session Deadline Extension
+  const handleSaveSessionExtension = async (e) => {
+    e.preventDefault();
+    if (!selectedSessionForExtend || !extendDate) {
+      alert('Please specify a valid extended closing date & time.');
+      return;
+    }
+    setExtending(true);
+    try {
+      const res = await sessionService.extendSession(selectedSessionForExtend._id, {
+        newEndDate: new Date(extendDate).toISOString(),
+        reason: extendReason || 'Deadline extended by Examination Controller'
+      });
+      if (res.success) {
+        showNotification(`Registration deadline for "${selectedSessionForExtend.name}" successfully extended!`);
+        setSelectedSessionForExtend(null);
+        loadAllAdminData();
+      }
+    } catch (err) {
+      alert('Extension failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setExtending(false);
     }
   };
 
@@ -836,11 +893,16 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
         <div className="space-y-6">
           <div className="flex items-center justify-between bg-white p-5 rounded border border-slate-200 shadow-sm">
             <div>
-              <h2 className="text-base font-bold text-slate-900 ">
-                Examination Registration Sessions
-              </h2>
-              <p className="text-xs text-slate-500">
-                Configure odd/even semester registration sessions, opening &amp; closing dates, and toggle active status.
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">
+                  Examination Registration Sessions
+                </h2>
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                  Odd, Even &amp; Special Sessions
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Configure odd/even/special registration sessions, start &amp; closing dates with exact time, and extend deadlines at any time.
               </p>
             </div>
 
@@ -856,9 +918,15 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           {/* New Session Modal / Form */}
           {isNewSessionOpen && (
             <div className="bg-white p-6 rounded border border-indigo-200 shadow-md animate-in fade-in">
-              <h3 className="text-sm font-bold text-slate-900  mb-4">
-                Add New Examination Registration Session
-              </h3>
+              <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-2">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Create Examination Registration Session
+                </h3>
+                <span className="text-xs text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                  Step 1: Session Parameters
+                </span>
+              </div>
+
               <form onSubmit={handleCreateSession} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -868,21 +936,29 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                       required
                       value={sessionFormData.name}
                       onChange={(e) => setSessionFormData({ ...sessionFormData, name: e.target.value })}
-                      placeholder="e.g. Winter 2026 Examination (Odd Semesters)"
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg"
+                      placeholder="e.g. Special Backlog Examination 2026-27 (Odd & Even)"
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Session Semester Type *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Examination Session Type *</label>
                     <select
                       value={sessionFormData.type}
                       onChange={(e) => setSessionFormData({ ...sessionFormData, type: e.target.value })}
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg"
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-semibold focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="ODD">ODD SEMESTERS (Sem 1, 3, 5, 7)</option>
-                      <option value="EVEN">EVEN SEMESTERS (Sem 2, 4, 6, 8)</option>
+                      <option value="SPECIAL">⭐ SPECIAL EXAM (Both Odd &amp; Even Semesters 1 - 8 Allowed)</option>
+                      <option value="ODD">ODD SEMESTERS ONLY (Semesters 1, 3, 5, 7)</option>
+                      <option value="EVEN">EVEN SEMESTERS ONLY (Semesters 2, 4, 6, 8)</option>
                     </select>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      {sessionFormData.type === 'SPECIAL'
+                        ? '🌟 Special exam allows students to fill failed backlogs from BOTH odd & even semesters simultaneously.'
+                        : sessionFormData.type === 'ODD'
+                        ? 'Students are strictly restricted to odd-semester backlogs (1, 3, 5, 7).'
+                        : 'Students are strictly restricted to even-semester backlogs (2, 4, 6, 8).'}
+                    </p>
                   </div>
                 </div>
 
@@ -899,9 +975,9 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Opening Date *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Opening Date &amp; Time *</label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       required
                       value={sessionFormData.startDate}
                       onChange={(e) => setSessionFormData({ ...sessionFormData, startDate: e.target.value })}
@@ -910,9 +986,9 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Closing Date *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Closing Deadline Date &amp; Time *</label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       required
                       value={sessionFormData.endDate}
                       onChange={(e) => setSessionFormData({ ...sessionFormData, endDate: e.target.value })}
@@ -927,14 +1003,14 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                     id="isActiveCheckbox"
                     checked={sessionFormData.isActive}
                     onChange={(e) => setSessionFormData({ ...sessionFormData, isActive: e.target.checked })}
-                    className="w-4 h-4 rounded text-indigo-600"
+                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
                   />
                   <label htmlFor="isActiveCheckbox" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                    Set as Currently Active Session (will accept backlog registrations)
+                    Set as Currently Active Session (Students will be able to apply within the specified dates)
                   </label>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-3">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                   <button
                     type="button"
                     onClick={() => setIsNewSessionOpen(false)}
@@ -955,160 +1031,437 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
           {/* Sessions List */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {sessions.map((sess) => (
-              <div
-                key={sess._id}
-                className={`p-6 rounded border transition-all ${
-                  sess.isActive
-                    ? 'bg-indigo-50/60 border-indigo-300 shadow-sm ring-1 ring-indigo-400/30'
-                    : 'bg-white border-slate-200'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                        sess.type === 'ODD' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                      }`}>
-                        {sess.type} Semesters
-                      </span>
-                      {sess.isActive && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800">
-                          CURRENTLY ACTIVE
-                        </span>
+            {sessions.map((sess) => {
+              const isSpecial = sess.type === 'SPECIAL';
+              const startDateFormatted = new Date(sess.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+              const endDateFormatted = new Date(sess.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+
+              return (
+                <div
+                  key={sess._id}
+                  className={`p-6 rounded border transition-all ${
+                    sess.isActive
+                      ? isSpecial
+                        ? 'bg-amber-50/50 border-amber-300 shadow-sm ring-1 ring-amber-400/40'
+                        : 'bg-indigo-50/60 border-indigo-300 shadow-sm ring-1 ring-indigo-400/30'
+                      : 'bg-white border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                        {isSpecial ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                            ⭐ SPECIAL EXAM (ODD &amp; EVEN)
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                            sess.type === 'ODD' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {sess.type} Semesters
+                          </span>
+                        )}
+
+                        {sess.isActive && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ACTIVE
+                          </span>
+                        )}
+
+                        {sess.isOpen ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            🟢 Open Now
+                          </span>
+                        ) : sess.isUpcoming ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            ⏳ Upcoming
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            🔒 Closed
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="font-bold text-slate-900 text-base">
+                        {sess.name}
+                      </h3>
+                      {isSpecial && (
+                        <p className="text-[11px] text-amber-900 mt-0.5 font-medium">
+                          Allows students to register failed backlogs across both Odd &amp; Even semesters.
+                        </p>
                       )}
                     </div>
-                    <h3 className="font-bold text-slate-900 text-base  mt-1">
-                      {sess.name}
-                    </h3>
+
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleToggleSessionActive(sess)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          sess.isActive
+                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                            : 'bg-[#1e3a8a] hover:bg-indigo-700 text-white'
+                        }`}
+                      >
+                        {sess.isActive ? 'Deactivate' : 'Activate Session'}
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenExtendModal(sess)}
+                        className="px-3 py-1 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs transition-colors"
+                        title="Extend deadline for this session"
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Extend Deadline</span>
+                      </button>
+                    </div>
                   </div>
 
+                  {/* Extension Notice if extended */}
+                  {sess.isExtended && (
+                    <div className="mb-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                      <div className="font-bold flex items-center gap-1">
+                        <span>🔔 Deadline Extended:</span>
+                        <span className="font-mono">{new Date(sess.extendedDate || sess.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      </div>
+                      <p className="text-[11px] text-amber-800 mt-0.5">
+                        Order / Remarks: {sess.extensionReason || 'Extended by order of Examination Authority.'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="text-xs text-slate-600 space-y-1.5 mt-2 pt-3 border-t border-slate-200">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Academic Year:</span>
+                      <span className="font-semibold text-slate-800">{sess.academicYear}</span>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Opening Date &amp; Time:</span>
+                      <span className="font-mono font-medium text-slate-800">{startDateFormatted}</span>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Closing Deadline:</span>
+                      <span className="font-mono font-bold text-slate-900">{endDateFormatted}</span>
+                    </div>
+
+                    {sess.isOpen && (
+                      <div className="flex justify-between text-emerald-700 pt-1 border-t border-slate-100 font-semibold">
+                        <span>Time Remaining:</span>
+                        <span className="font-mono">{sess.timeRemainingFormatted || 'Active'}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Extend Deadline Modal Popup */}
+          {selectedSessionForExtend && (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Extend Registration Deadline
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        Session: <span className="font-semibold text-slate-800">{selectedSessionForExtend.name}</span>
+                      </p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => handleToggleSessionActive(sess)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      sess.isActive
-                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
-                        : 'bg-[#1e3a8a] hover:bg-indigo-700 text-white'
-                    }`}
+                    onClick={() => setSelectedSessionForExtend(null)}
+                    className="p-1 rounded text-slate-400 hover:text-slate-600"
                   >
-                    {sess.isActive ? 'Deactivate' : 'Activate Session'}
+                    &times;
                   </button>
                 </div>
 
-                <div className="text-xs text-slate-600 space-y-1 mt-4 pt-3 border-t border-slate-200/80">
-                  <div className="flex justify-between">
-                    <span>Academic Year:</span>
-                    <span className="font-semibold">{sess.academicYear}</span>
+                <form onSubmit={handleSaveSessionExtension} className="space-y-4 text-xs">
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Current Opening:</span>
+                      <span className="font-mono text-slate-800 font-medium">
+                        {new Date(selectedSessionForExtend.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Current Closing Deadline:</span>
+                      <span className="font-mono text-rose-700 font-bold">
+                        {new Date(selectedSessionForExtend.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Registration Window:</span>
-                    <span className="font-mono text-slate-800">
-                      {new Date(sess.startDate).toLocaleDateString()} &mdash; {new Date(sess.endDate).toLocaleDateString()}
-                    </span>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      New Extended Closing Date &amp; Time *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={extendDate}
+                      onChange={(e) => setExtendDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Students will be able to apply and pay fees until this exact date and time.
+                    </p>
                   </div>
-                </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Official Extension Notification / Reason *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={extendReason}
+                      onChange={(e) => setExtendReason(e.target.value)}
+                      placeholder="e.g. Extended by 5 days as per Vice Chancellor Notification #COE-2026/412"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                    <button
+                      type="button"
+                      disabled={extending}
+                      onClick={() => setSelectedSessionForExtend(null)}
+                      className="px-4 py-2 border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={extending}
+                      className="px-4 py-2 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <span>{extending ? 'Saving Extension...' : 'Confirm Deadline Extension'}</span>
+                    </button>
+                  </div>
+                </form>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* TAB 4: FEES & SUBJECT LIMITS CONFIGURATION */}
       {activeSubTab === 'config' && (
-        <div className="bg-white rounded border border-slate-200 shadow-sm p-6 sm:p-8 max-w-4xl mx-auto">
-          <div className="mb-6 border-b border-slate-200 pb-4">
-            <h2 className="text-lg font-bold text-slate-900 ">
-              Dynamic Fee Structure &amp; Theory Limits Configuration
-            </h2>
+        <div className="bg-white rounded border border-slate-200 shadow-sm p-6 sm:p-8 max-w-4xl mx-auto space-y-6">
+          <div className="border-b border-slate-200 pb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900">
+                Examination Fee Structures &amp; Policy Limits
+              </h2>
+              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Live Dynamic Engine
+              </span>
+            </div>
             <p className="text-xs text-slate-500 mt-1">
-              Configure the maximum theory subjects allowed per registration and dynamically adjust paper fee rates. 
-              Changes are immediately enforced and logged in the security audit trail.
+              Configure standard backlog fees, special/mercy examination rates, and theory subject caps. 
+              Changes are immediately applied to real-time calculators and registered in the security audit trail.
             </p>
           </div>
 
           <form onSubmit={handleSaveConfig} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Theory Limit */}
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
-                  Maximum Theory Subjects Limit *
-                </label>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Default: 4. Enforced on both frontend and backend for all student backlog registrations.
-                </p>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  required
-                  value={configFormData.maxTheorySubjects}
-                  onChange={(e) => setConfigFormData({ ...configFormData, maxTheorySubjects: Number(e.target.value) })}
-                  className="w-full text-base font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
+            {/* Section A: Standard Regular Backlog Fees */}
+            <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    1. Standard Odd &amp; Even Examination Rates
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Applied during normal Odd or Even semester backlog registration windows.</p>
+                </div>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-900">Normal Sessions</span>
               </div>
 
-              {/* Theory Fee */}
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
-                  Theory Subject Fee (₹) *
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
+                    Theory Subject Fee (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    required
+                    value={configFormData.theoryFeePerSubject}
+                    onChange={(e) => setConfigFormData({ ...configFormData, theoryFeePerSubject: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Default: ₹500</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
+                    Non-Theory Fee (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    required
+                    value={configFormData.nonTheoryFeePerSubject}
+                    onChange={(e) => setConfigFormData({ ...configFormData, nonTheoryFeePerSubject: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Labs/Practicals: ₹300</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
+                    Base Exam Fee (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    required
+                    value={configFormData.baseRegistrationFee}
+                    onChange={(e) => setConfigFormData({ ...configFormData, baseRegistrationFee: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Fixed Processing: ₹100</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
+                    Max Theory Limit *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    required
+                    value={configFormData.maxTheorySubjects}
+                    onChange={(e) => setConfigFormData({ ...configFormData, maxTheorySubjects: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-[10px] text-slate-400">Default: 4 Theory</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section B: Special / Supplementary Examination Fee Structure */}
+            <div className="bg-amber-50/50 p-5 rounded-xl border border-amber-200">
+              <div className="flex items-center justify-between mb-3 border-b border-amber-200 pb-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-amber-950">
+                      2. Special Examination Fee Structure (Odd &amp; Even Combined)
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-amber-200 text-amber-900">
+                      SPECIAL PAPERS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800">
+                    Applied when an active session is set to <strong>SPECIAL</strong> (students can select backlogs from both Odd &amp; Even semesters).
+                  </p>
+                </div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-amber-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={configFormData.allowSpecialExamRegistration}
+                    onChange={(e) => setConfigFormData({ ...configFormData, allowSpecialExamRegistration: e.target.checked })}
+                    className="w-4 h-4 rounded text-amber-600 cursor-pointer"
+                  />
+                  <span>Enable Special Exam</span>
                 </label>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Fee charged per theory subject (e.g. ₹500).
-                </p>
-                <input
-                  type="number"
-                  min="0"
-                  step="50"
-                  required
-                  value={configFormData.theoryFeePerSubject}
-                  onChange={(e) => setConfigFormData({ ...configFormData, theoryFeePerSubject: Number(e.target.value) })}
-                  className="w-full text-base font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
               </div>
 
-              {/* Non-Theory Fee */}
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
-                  Non-Theory Subject Fee (₹) *
-                </label>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Fee for practicals, labs, vivas, and seminars (e.g. ₹300). Unlimited selection.
-                </p>
-                <input
-                  type="number"
-                  min="0"
-                  step="50"
-                  required
-                  value={configFormData.nonTheoryFeePerSubject}
-                  onChange={(e) => setConfigFormData({ ...configFormData, nonTheoryFeePerSubject: Number(e.target.value) })}
-                  className="w-full text-base font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-amber-900 mb-1">
+                    Special Theory Fee (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    required
+                    value={configFormData.specialTheoryFeePerSubject}
+                    onChange={(e) => setConfigFormData({ ...configFormData, specialTheoryFeePerSubject: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-amber-700">Special Theory: ₹1,000</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-amber-900 mb-1">
+                    Special Non-Theory Fee (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    required
+                    value={configFormData.specialNonTheoryFeePerSubject}
+                    onChange={(e) => setConfigFormData({ ...configFormData, specialNonTheoryFeePerSubject: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-amber-700">Special Labs/Clinics: ₹600</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-amber-900 mb-1">
+                    Special Base Fee (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    required
+                    value={configFormData.specialBaseRegistrationFee}
+                    onChange={(e) => setConfigFormData({ ...configFormData, specialBaseRegistrationFee: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-amber-700">Special Processing: ₹200</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase text-amber-900 mb-1">
+                    Special Max Theory Limit *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="15"
+                    required
+                    value={configFormData.specialMaxTheorySubjects}
+                    onChange={(e) => setConfigFormData({ ...configFormData, specialMaxTheorySubjects: Number(e.target.value) })}
+                    className="w-full text-sm font-bold font-mono px-3 py-2 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-[10px] text-amber-700">Extended Cap: 6 Theory</span>
+                </div>
               </div>
 
-              {/* Base Fee */}
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1">
-                  Base Exam Registration Fee (₹) *
+              <div className="mt-3 pt-3 border-t border-amber-200">
+                <label className="block text-xs font-bold text-amber-950 mb-1">
+                  Special Examination Instructions &amp; Candidate Guidelines
                 </label>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Fixed processing charge added to each registration (e.g. ₹100).
-                </p>
-                <input
-                  type="number"
-                  min="0"
-                  step="25"
-                  required
-                  value={configFormData.baseRegistrationFee}
-                  onChange={(e) => setConfigFormData({ ...configFormData, baseRegistrationFee: Number(e.target.value) })}
-                  className="w-full text-base font-bold font-mono px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                <textarea
+                  rows="2"
+                  value={configFormData.specialExamInstructions || ''}
+                  onChange={(e) => setConfigFormData({ ...configFormData, specialExamInstructions: e.target.value })}
+                  placeholder="Special Examination instructions displayed to students..."
+                  className="w-full text-xs p-2.5 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                 />
               </div>
             </div>
 
             {/* University Bank Details Section */}
-            <div className="pt-4 border-t border-slate-200">
-              <h3 className="text-sm font-bold text-slate-900  mb-3">
-                University Bank Account Details (Displayed for Manual Receipts)
+            <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+              <h3 className="text-sm font-bold text-slate-900 mb-3 border-b border-slate-200 pb-2">
+                3. University Bank Account Details (Displayed for Manual Receipts)
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
@@ -1169,7 +1522,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
               type="submit"
               className="w-full py-3 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-600/25 transition-all cursor-pointer"
             >
-              Save Configuration &amp; Fee Structure
+              Save Configuration, Fees &amp; Special Exam Rules
             </button>
           </form>
         </div>

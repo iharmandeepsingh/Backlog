@@ -98,7 +98,7 @@ exports.getAllStudents = async (req, res) => {
 
     // Sanitize password out
     const sanitized = students.map(s => {
-      const copy = { ...s };
+      const copy = s.toObject ? s.toObject() : { ...s };
       delete copy.password;
       return copy;
     });
@@ -139,7 +139,7 @@ exports.updateStudentBacklogs = async (req, res) => {
       req
     });
 
-    const sanitized = { ...updated };
+    const sanitized = updated.toObject ? updated.toObject() : { ...updated };
     delete sanitized.password;
 
     res.json({

@@ -1,10 +1,15 @@
-const dbStore = require('../utils/dbStore');
+const User = require('./User');
+const Subject = require('./Subject');
+const Session = require('./Session');
+const Config = require('./Config');
+const Registration = require('./Registration');
+const AuditLog = require('./AuditLog');
 
 module.exports = {
-  User: dbStore.User,
-  Subject: dbStore.Subject,
-  Session: dbStore.Session,
-  Config: dbStore.Config,
-  Registration: dbStore.Registration,
-  AuditLog: dbStore.AuditLog
+  User,
+  Subject,
+  Session,
+  Config,
+  Registration,
+  AuditLog
 };

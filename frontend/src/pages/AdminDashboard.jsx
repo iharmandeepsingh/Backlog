@@ -115,6 +115,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
   const [importSemester, setImportSemester] = useState('3');
   const [importResult, setImportResult] = useState(null);
   const [importError, setImportError] = useState('');
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
 
@@ -388,6 +389,25 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       setImportError(err.response?.data?.message || err.message || 'Excel import failed.');
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    setExportingCSV(true);
+    try {
+      await registrationService.exportCSV({
+        status: regStatus,
+        paymentMethod: regMethod,
+        department: regDept,
+        session: regSession,
+        search: regSearch
+      });
+      showNotification('Registrations CSV report exported successfully!');
+    } catch (err) {
+      console.error('Export CSV Error:', err);
+      showNotification(err.response?.data?.message || 'Failed to export CSV report.', 'error');
+    } finally {
+      setExportingCSV(false);
     }
   };
 
@@ -692,11 +712,13 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
               </div>
 
               <button
-                onClick={() => registrationService.exportCSV()}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0"
+                type="button"
+                disabled={exportingCSV}
+                onClick={handleExportCSV}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                Export CSV
+                <span>{exportingCSV ? 'Exporting CSV...' : 'Export CSV'}</span>
               </button>
             </div>
 

@@ -1,10 +1,12 @@
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const { connectDB } = require('../src/config/db');
 const { User, Subject, Session, Config, Registration, AuditLog } = require('../src/models');
 const { importResultsFromExcel } = require('../src/utils/excelImporter');
 
 const seedDatabase = async () => {
   console.log('🌱 Starting Clean Database Seeding (Excel Centric)...');
+  await connectDB();
 
   // 1. Clear old data
   await User.deleteMany({});

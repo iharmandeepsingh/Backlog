@@ -524,10 +524,40 @@ exports.verifyOnlinePayment = async (req, res) => {
 
 exports.exportReportCSV = async (req, res) => {
   try {
-    let registrations = await Registration.find()
+    const { status, department, session, paymentMethod, search } = req.query;
+    const query = {};
+
+    if (status && status !== 'ALL') {
+      query['payment.status'] = status.toUpperCase();
+    }
+    if (paymentMethod && paymentMethod !== 'ALL') {
+      query['payment.method'] = paymentMethod.toUpperCase();
+    }
+    if (session && session !== 'ALL') {
+      query.session = session;
+    }
+
+    let registrations = await Registration.find(query)
       .populate('student')
       .populate('session')
       .sort({ createdAt: -1 });
+
+    if (department && department !== 'ALL') {
+      registrations = registrations.filter(r => r.student?.department === department);
+    }
+
+    if (search) {
+      const term = search.toLowerCase();
+      registrations = registrations.filter(r => {
+        const sName = (r.student?.name || '').toLowerCase();
+        const sRoll = (r.student?.rollNumber || '').toLowerCase();
+        const regNo = (r.registrationNumber || '').toLowerCase();
+        const hasSub = (r.subjects || []).some(s =>
+          (s.code || '').toLowerCase().includes(term) || (s.name || '').toLowerCase().includes(term)
+        );
+        return sName.includes(term) || sRoll.includes(term) || regNo.includes(term) || hasSub;
+      });
+    }
 
     const headers = [
       'Registration No',
@@ -577,7 +607,7 @@ exports.exportReportCSV = async (req, res) => {
 
     const csvContent = [headers.join(','), ...rows].join('\n');
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="backlog_registrations_report.csv"');
     res.status(200).send(csvContent);
   } catch (error) {

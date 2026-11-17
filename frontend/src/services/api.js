@@ -151,9 +151,29 @@ export const registrationService = {
     const res = await api.post('/registrations/verify-online-payment', data);
     return res.data;
   },
-  exportCSV: () => {
-    const token = localStorage.getItem('token');
-    window.open(`/api/registrations/export-csv?token=${token}`, '_blank');
+  exportCSV: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status && filters.status !== 'ALL') params.append('status', filters.status);
+    if (filters.paymentMethod && filters.paymentMethod !== 'ALL') params.append('paymentMethod', filters.paymentMethod);
+    if (filters.department && filters.department !== 'ALL') params.append('department', filters.department);
+    if (filters.session && filters.session !== 'ALL') params.append('session', filters.session);
+    if (filters.search) params.append('search', filters.search);
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const res = await api.get(`/registrations/export-csv${queryString}`, {
+      responseType: 'blob'
+    });
+
+    const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `backlog_registrations_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
   }
 };
 

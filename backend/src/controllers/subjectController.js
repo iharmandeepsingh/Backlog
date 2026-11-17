@@ -94,7 +94,7 @@ exports.getEligibleBacklogs = async (req, res) => {
       );
 
       const enriched = {
-        ...sub,
+        ...(sub.toObject ? sub.toObject() : sub),
         isTheory: sub.type === 'Theory' || sub.isTheory === true,
         grade: failDetail?.grade || 'F',
         marks: failDetail?.totalMarks ?? null,

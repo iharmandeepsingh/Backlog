@@ -29,7 +29,7 @@ exports.getSessions = async (req, res) => {
   try {
     const rawSessions = await Session.find().sort({ createdAt: -1 });
     const sessions = rawSessions.map(sess => ({
-      ...sess,
+      ...(sess.toObject ? sess.toObject() : sess),
       ...calculateSessionTimeStatus(sess)
     }));
 
@@ -55,7 +55,7 @@ exports.getActiveSession = async (req, res) => {
     res.json({
       success: true,
       session: {
-        ...session,
+        ...(session.toObject ? session.toObject() : session),
         isSpecialExam: session.type === 'SPECIAL',
         allowAllSemesters: session.type === 'SPECIAL'
       },

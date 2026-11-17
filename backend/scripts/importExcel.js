@@ -1,10 +1,12 @@
 const path = require('path');
+const { connectDB } = require('../src/config/db');
 const { importResultsFromExcel } = require('../src/utils/excelImporter');
 
 const filePath = process.argv[2] || path.join(__dirname, '..', '..', 'LAW 2023.xlsx');
 const currentSemArg = process.argv[3] ? parseInt(process.argv[3], 10) : null;
 
 async function run() {
+  await connectDB();
   console.log(`Starting Excel Result Import from: ${filePath}`);
   try {
     const result = await importResultsFromExcel(filePath, {

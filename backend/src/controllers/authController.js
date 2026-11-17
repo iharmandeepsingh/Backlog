@@ -71,7 +71,7 @@ exports.register = async (req, res) => {
 
     const token = generateToken(newUser);
 
-    const userObj = { ...newUser };
+    const userObj = newUser.toObject ? newUser.toObject() : { ...newUser };
     delete userObj.password;
 
     res.status(201).json({
@@ -120,7 +120,7 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user);
 
-    const userObj = { ...user };
+    const userObj = user.toObject ? user.toObject() : { ...user };
     delete userObj.password;
 
     res.json({
@@ -142,7 +142,7 @@ exports.getProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const userObj = { ...user };
+    const userObj = user.toObject ? user.toObject() : { ...user };
     delete userObj.password;
 
     // Fetch details of assigned backlog subjects

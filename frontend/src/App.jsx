@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/StudentDashboard';
@@ -17,10 +16,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-sm">
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center text-slate-700 text-sm">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="font-medium text-slate-300">Connecting to Examination Portal...</span>
+          <div className="w-8 h-8 border-3 border-blue-700 border-t-transparent rounded-full animate-spin"></div>
+          <span className="font-medium text-slate-600">Loading Examination Portal...</span>
         </div>
       </div>
     );
@@ -29,20 +28,23 @@ function App() {
   // Unauthenticated view
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col justify-between">
-        <header className="bg-slate-900/80 border-b border-slate-800 py-3 px-6 text-center text-xs font-semibold text-slate-400">
-          Central University Examination Controller &bull; Backlog Examination Registration System
+      <div className="min-h-screen bg-slate-100 flex flex-col">
+        <header className="bg-white border-b border-slate-200 py-3 px-6 flex items-center justify-between no-print">
+          <div className="text-sm font-bold text-slate-800">
+            University Examination Portal
+          </div>
+          <div className="text-xs text-slate-500">
+            Academic Session 2026-2027
+          </div>
         </header>
 
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center p-4">
           {authView === 'login' ? (
             <LoginPage onSwitchToRegister={() => setAuthView('register')} />
           ) : (
             <RegisterPage onSwitchToLogin={() => setAuthView('login')} />
           )}
         </main>
-
-        <Footer />
       </div>
     );
   }
@@ -60,10 +62,10 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="min-h-screen flex flex-col bg-slate-100">
       <Navbar activeTab={currentTab} setActiveTab={setCurrentTab} />
 
-      <main className="flex-1">
+      <main className="flex-1 pb-12">
         {/* STUDENT VIEWS */}
         {isStudent && (
           <>
@@ -134,8 +136,6 @@ function App() {
           </>
         )}
       </main>
-
-      <Footer />
     </div>
   );
 }

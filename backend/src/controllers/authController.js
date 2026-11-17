@@ -88,14 +88,20 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { loginId, password } = req.body; // loginId can be email or roll number
+    let loginId = req.body.loginId || req.body.email || req.body.rollNumber || req.body.identifier;
+    let password = req.body.password;
+
+    if (typeof loginId === 'object' && loginId !== null) {
+      password = password || loginId.password;
+      loginId = loginId.loginId || loginId.email || loginId.rollNumber || loginId.identifier;
+    }
 
     if (!loginId || !password) {
       return res.status(400).json({ success: false, message: 'Please provide Email/Roll Number and Password.' });
     }
 
-    const searchStr = loginId.trim().toLowerCase();
-    const searchRoll = loginId.trim().toUpperCase();
+    const searchStr = String(loginId).trim().toLowerCase();
+    const searchRoll = String(loginId).trim().toUpperCase();
 
     // Find by email or rollNumber
     let user = await User.findOne({ email: searchStr });

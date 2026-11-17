@@ -79,6 +79,28 @@ Open [http://localhost:3000](http://localhost:3000) in your web browser.
 | Role | Username / Login ID | Password | Notes |
 | :--- | :--- | :--- | :--- |
 | **Administrator** | `admin@university.edu` | `admin123` | Dr. Ramesh Sharma (Exam Controller) |
-| **Student 1** | `CS2022001` or `rahul.cs@university.edu` | `student123` | Rahul Sharma (Sem 5, Odd Backlogs) |
-| **Student 2** | `CS2022045` or `priya.cs@university.edu` | `student123` | Priya Patel (Manual Receipt Demo) |
-| **Student 3** | `EC2022012` or `amit.ec@university.edu` | `student123` | Amit Kumar (Online Paid Demo) |
+| **Student A (Row 2)** | `72312720` or `72312720@university.edu` | `student123` | Student A (Batch 2023, Sem 3, Failed in `23BALB11C01`) |
+| **Student B (Row 3)** | `72311390` or `72311390@university.edu` | `student123` | Student B (Batch 2023, Sem 3, Failed in `23BALB11C02`) |
+
+---
+
+## 📑 Excel Result & Failure Ingestion
+
+To import candidate failures from university result sheets (e.g. `LAW 2023.xlsx`):
+1. **Via Admin Portal:** Navigate to Admin Console > **Import Results (Excel)** and upload any `.xlsx` result file directly.
+2. **Via Backend CLI:**
+```bash
+cd backend
+node scripts/importExcel.js "c:\Users\Hp\Downloads\LAW 2023.xlsx" 3
+```
+
+### 🎯 Key Rules Implemented:
+1. **Strictly Previous Semesters Only:** A student currently in Semester `N` can only register for backlogs from semesters strictly `< N`. Current semester `N` subjects are regular exams and are never displayed as backlogs.
+2. **Strict Failure Filtering:** Only subjects where the student actually received grade `'F'` / `'FAIL'` / `'RE'` are shown.
+3. **Session Parity Matching:**
+   - **Odd Sessions:** Displays strictly previous Odd semester failures (1, 3, 5...).
+   - **Even Sessions:** Displays strictly previous Even semester failures (2, 4, 6...).
+4. **Subject Quota & Fee Calculation:**
+   - Maximum **4 Theoretical subjects** allowed.
+   - **Unlimited Non-Theoretical (Practical / Clinical / Moot Court / Viva)** subjects allowed.
+   - Dynamic real-time fee calculation with base fee breakdown.

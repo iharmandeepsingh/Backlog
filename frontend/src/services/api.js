@@ -93,8 +93,10 @@ export const subjectService = {
     const res = await api.get('/subjects', { params });
     return res.data;
   },
-  getEligibleBacklogs: async () => {
-    const res = await api.get('/subjects/eligible-backlogs');
+  getEligibleBacklogs: async (sessionType) => {
+    const res = await api.get('/subjects/eligible-backlogs', {
+      params: sessionType ? { sessionType } : {}
+    });
     return res.data;
   },
   createSubject: async (subjectData) => {
@@ -167,6 +169,12 @@ export const adminService = {
   },
   updateStudentBacklogs: async (studentId, data) => {
     const res = await api.put(`/admin/students/${studentId}/backlogs`, data);
+    return res.data;
+  },
+  importExcelResults: async (formData) => {
+    const res = await api.post('/admin/import-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return res.data;
   }
 };

@@ -15,7 +15,8 @@ import {
   Info,
   Layers,
   FileCheck,
-  Lock
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 import PaymentGatewayModal from '../components/PaymentGatewayModal';
 
@@ -25,6 +26,8 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
   const [submitting, setSubmitting] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
   const [sessionType, setSessionType] = useState('ODD');
+  const [selectedSemesterType, setSelectedSemesterType] = useState('ODD');
+  const [currentSemester, setCurrentSemester] = useState(user?.currentSemester || 1);
   const [config, setConfig] = useState({
     maxTheorySubjects: 4,
     theoryFeePerSubject: 500,
@@ -52,7 +55,7 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (targetType) => {
     setLoading(true);
     setError('');
     try {
@@ -62,18 +65,30 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
         setConfig(confRes.config);
       }
 
-      // 2. Fetch eligible backlogs
-      const subRes = await subjectService.getEligibleBacklogs();
+      // 2. Fetch eligible backlogs with requested semester type (ODD or EVEN)
+      const typeToQuery = targetType || selectedSemesterType;
+      const subRes = await subjectService.getEligibleBacklogs(typeToQuery);
       if (subRes.success) {
         setActiveSession(subRes.activeSession);
         setSessionType(subRes.sessionType);
+        setSelectedSemesterType(subRes.sessionType);
         setEligibleSubjects(subRes.eligibleSubjects || []);
+        if (subRes.currentSemester) {
+          setCurrentSemester(subRes.currentSemester);
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load eligible subjects or active session.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSwitchSemesterType = (newType) => {
+    if (newType === selectedSemesterType) return;
+    setSelectedSemesterType(newType);
+    setSelectedSubjectIds([]);
+    loadData(newType);
   };
 
   // Separate Theory vs Non-Theory
@@ -102,7 +117,7 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
     } else {
       // Select
       if (subject.isTheory && isTheoryLimitReached) {
-        alert(`Theory Subject Limit Reached: You can select a maximum of ${maxTheoryAllowed} theory subjects. Non-theory subjects can be selected without any limit.`);
+        alert(`Theory Subject Limit Reached: You can select a maximum of ${maxTheoryAllowed} theory subjects. Non-theory subjects can be selected without any numerical limit.`);
         return;
       }
       setSelectedSubjectIds([...selectedSubjectIds, subject._id]);
@@ -170,7 +185,6 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
         };
         const res = await registrationService.createRegistration(payload);
         if (res.success) {
-          // Open Online payment checkout
           setGatewayReg(res.registration);
         }
       }
@@ -190,67 +204,130 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center text-slate-500 text-sm">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center text-slate-500 text-xs">
+        <div className="w-8 h-8 border-3 border-blue-700 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
         Loading eligible backlog examination subjects &amp; fee structures...
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
       {/* Session Header Card */}
-      <div className="bg-gradient-to-r from-slate-900 to-blue-950 rounded-2xl p-6 text-white shadow-lg border border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded border border-slate-300 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-blue-50 text-blue-900 border border-blue-200">
+              {sessionType} SEMESTER SESSION
+            </span>
+            <span className="text-xs text-slate-500 font-mono">Academic Year {activeSession?.academicYear || '2026-2027'}</span>
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 mt-1">
+            {activeSession?.name || 'Backlog Examination Registration'}
+          </h1>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Select your eligible backlog subjects below. Odd sessions permit only past odd semester failures (Sem 1, 3, 5, 7); Even sessions permit only past even semester failures (Sem 2, 4, 6, 8).
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-xs font-medium flex items-center gap-1.5 self-start md:self-center cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Dashboard</span>
+        </button>
+      </div>
+
+      {/* Odd / Even Session Switcher & Academic Standing Rule Banner */}
+      <div className="bg-white rounded border border-slate-300 p-4 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[11px] font-extrabold tracking-wide uppercase ${
-                sessionType === 'ODD'
-                  ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                  : 'bg-purple-500/20 text-purple-300 border border-purple-400/30'
-              }`}>
-                {sessionType} SEMESTER SESSION
-              </span>
-              <span className="text-xs text-slate-400 font-mono">Academic Year {activeSession?.academicYear || '2026-2027'}</span>
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">
+              Select Examination Parity
+            </span>
+            <div className="inline-flex rounded border border-slate-300 p-0.5 bg-slate-100">
+              <button
+                type="button"
+                onClick={() => handleSwitchSemesterType('ODD')}
+                className={`px-3 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  selectedSemesterType === 'ODD'
+                    ? 'bg-[#1e3a8a] text-white shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                Odd Semesters (1, 3, 5, 7)
+                {sessionType === 'ODD' && (
+                  <span className="ml-1.5 text-[9px] bg-blue-200 text-blue-900 px-1 py-0.2 rounded font-bold uppercase">
+                    Active
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSwitchSemesterType('EVEN')}
+                className={`px-3 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  selectedSemesterType === 'EVEN'
+                    ? 'bg-[#1e3a8a] text-white shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                Even Semesters (2, 4, 6, 8)
+                {sessionType === 'EVEN' && (
+                  <span className="ml-1.5 text-[9px] bg-blue-200 text-blue-900 px-1 py-0.2 rounded font-bold uppercase">
+                    Active
+                  </span>
+                )}
+              </button>
             </div>
-            <h1 className="text-2xl font-bold font-['Outfit'] mt-1">
-              {activeSession?.name || 'Backlog Examination Registration'}
-            </h1>
-            <p className="text-xs text-slate-300 mt-0.5">
-              Select your eligible theory and practical backlog subjects below. Odd sessions permit only Sem 1, 3, 5, 7 backlogs; Even sessions permit only Sem 2, 4, 6, 8 backlogs.
-            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold self-start md:self-center transition-colors"
-          >
-            Cancel &amp; Return
-          </button>
+          <div className="sm:text-right">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">
+              Candidate Standing
+            </span>
+            <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-300 text-slate-800 px-3 py-1 rounded text-xs font-semibold">
+              <span>Current Enrolled Semester:</span>
+              <span className="font-mono text-xs bg-slate-200 text-slate-900 px-1.5 py-0.5 rounded font-bold">
+                Semester {currentSemester}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Rule Banner */}
+        <div className="bg-amber-50 border border-amber-200 rounded p-2.5 text-xs text-amber-900 flex items-start gap-2">
+          <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <strong>Examination Standing Rule:</strong> You are currently enrolled in <strong>Semester {currentSemester}</strong>. 
+            Only verified failed subjects from <strong>strictly previous {selectedSemesterType === 'ODD' ? 'Odd' : 'Even'} semesters</strong> ({selectedSemesterType === 'ODD' ? '1, 3, 5...' : '2, 4, 6...'} strictly less than Semester {currentSemester}) are eligible. 
+            Current regular semester ({currentSemester}) subjects are excluded because regular examinations are conducted for them.
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
+        <div className="p-3 rounded bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Main Grid: Subjects Selection (Left) vs Dynamic Fee & Payment Summary (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Subjects Selection */}
-        <div className="lg:col-span-8 space-y-5">
+        <div className="lg:col-span-8 space-y-4">
           {/* Theory Limits & Category Tabs */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-white p-3 rounded border border-slate-300 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Filter Tabs */}
-            <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+            <div className="flex rounded border border-slate-300 p-0.5 bg-slate-100 text-xs font-medium">
               <button
                 type="button"
                 onClick={() => setFilterCategory('ALL')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  filterCategory === 'ALL' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                  filterCategory === 'ALL' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 All Subjects ({eligibleSubjects.length})
@@ -258,8 +335,8 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
               <button
                 type="button"
                 onClick={() => setFilterCategory('THEORY')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  filterCategory === 'THEORY' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                  filterCategory === 'THEORY' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Theory Only
@@ -267,48 +344,48 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
               <button
                 type="button"
                 onClick={() => setFilterCategory('NON_THEORY')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  filterCategory === 'NON_THEORY' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                  filterCategory === 'NON_THEORY' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Practical / Lab / Viva
+                Practical / Clinical / Viva
               </button>
             </div>
 
             {/* Theory Quota Pill */}
-            <div className="flex items-center gap-3">
-              <div className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 ${
+            <div className="flex items-center gap-2 text-xs">
+              <div className={`px-2.5 py-1 rounded border font-medium flex items-center gap-1.5 ${
                 selectedTheoryCount >= maxTheoryAllowed
-                  ? 'bg-amber-50 text-amber-800 border-amber-300'
-                  : 'bg-blue-50 text-blue-800 border-blue-200'
+                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                  : 'bg-slate-50 text-slate-800 border-slate-300'
               }`}>
                 <span>Theory Quota:</span>
-                <span className="font-mono font-bold text-sm">
+                <span className="font-mono font-bold">
                   {selectedTheoryCount} / {maxTheoryAllowed}
                 </span>
                 {selectedTheoryCount >= maxTheoryAllowed && (
-                  <span className="text-[10px] bg-amber-200 text-amber-900 px-1 rounded uppercase font-bold">Max Limit</span>
+                  <span className="text-[10px] bg-amber-200 text-amber-900 px-1 rounded font-bold uppercase">Max Limit</span>
                 )}
               </div>
 
-              <div className="px-3 py-1.5 rounded-xl border bg-emerald-50 text-emerald-800 border-emerald-200 text-xs font-semibold">
+              <div className="px-2.5 py-1 rounded border bg-slate-50 text-slate-800 border-slate-300 font-medium">
                 <span>Non-Theory:</span>{' '}
                 <span className="font-mono font-bold">{selectedNonTheoryCount} (Unlimited)</span>
               </div>
             </div>
           </div>
 
-          {/* Subjects Cards List */}
+          {/* Subjects List */}
           {filteredSubjects.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
-              <BookOpen className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+            <div className="bg-white rounded border border-slate-300 p-8 text-center text-slate-500 shadow-xs">
+              <BookOpen className="w-8 h-8 text-slate-400 mx-auto mb-2" />
               <h4 className="font-bold text-slate-800 text-sm">No Backlog Subjects Found</h4>
               <p className="text-xs text-slate-500 mt-1">
                 You do not have any pending eligible backlog subjects in this category for the active {sessionType} semester session.
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredSubjects.map((sub) => {
                 const isSelected = selectedSubjectIds.includes(sub._id);
                 const isAlreadyRegistered = sub.isAlreadyRegistered;
@@ -319,17 +396,17 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
                   <div
                     key={sub._id}
                     onClick={() => !isAlreadyRegistered && !isTheoryBlocked && handleToggleSubject(sub)}
-                    className={`rounded-2xl border p-4.5 transition-all flex items-start justify-between gap-4 select-none ${
+                    className={`rounded border p-3.5 transition-colors flex items-start justify-between gap-3 select-none ${
                       isAlreadyRegistered
                         ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
                         : isSelected
-                        ? 'bg-blue-50/60 border-blue-500 shadow-sm ring-1 ring-blue-500/30 cursor-pointer'
+                        ? 'bg-blue-50/70 border-blue-500 shadow-xs cursor-pointer'
                         : isTheoryBlocked
-                        ? 'bg-white border-slate-200 opacity-50 cursor-not-allowed'
-                        : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-slate-50/60 cursor-pointer'
+                        ? 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed'
+                        : 'bg-white border-slate-300 hover:border-slate-400 hover:bg-slate-50/60 cursor-pointer'
                     }`}
                   >
-                    <div className="flex items-start gap-3.5">
+                    <div className="flex items-start gap-3">
                       {/* Checkbox */}
                       <div className="pt-0.5">
                         <input
@@ -337,44 +414,53 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
                           checked={isSelected || isAlreadyRegistered}
                           disabled={isAlreadyRegistered || isTheoryBlocked}
                           onChange={() => {}}
-                          className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="w-4 h-4 rounded text-[#1e3a8a] focus:ring-blue-500 cursor-pointer"
                         />
                       </div>
 
                       <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono font-extrabold text-blue-900 text-sm">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-mono font-bold text-blue-900 text-xs">
                             {sub.code}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            isTheory ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold border ${
+                            isTheory ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           }`}>
                             {sub.type}
                           </span>
-                          <span className="text-xs font-semibold text-slate-600">
+                          <span className="text-xs text-slate-600 font-medium">
                             Semester {sub.semester} ({sub.semester % 2 !== 0 ? 'Odd' : 'Even'})
                           </span>
                           <span className="text-xs text-slate-400 font-mono">
                             {sub.credits} Credits
                           </span>
+                          <span className="text-[10px] bg-rose-50 text-rose-800 border border-rose-200 font-bold px-1 py-0.2 rounded">
+                            Result: {sub.grade || 'F'} (Fail) {sub.marks !== null ? `• ${sub.marks} / ${sub.maxMarks || 100}` : ''}
+                          </span>
                         </div>
 
-                        <h3 className="font-bold text-slate-900 text-sm mt-1">
+                        <h3 className="font-bold text-slate-900 text-xs mt-1">
                           {sub.name}
                         </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {sub.department} &bull; {sub.program || 'B.Tech'}
+                        <p className="text-[11px] text-slate-500">
+                          {sub.department} &bull; {sub.program || 'B.A., LL.B.'}
                         </p>
 
+                        {!isTheory && (
+                          <span className="inline-block text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 border border-emerald-200">
+                            Non-Theory: Unlimited selection permitted
+                          </span>
+                        )}
+
                         {isAlreadyRegistered && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 mt-2 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 mt-1.5 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
                             Already Registered in this Session
                           </span>
                         )}
 
                         {isTheoryBlocked && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 mt-2 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 mt-1.5 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                             <AlertTriangle className="w-3 h-3" />
                             Cannot Select: Max Theory Limit ({maxTheoryAllowed}) Reached
                           </span>
@@ -383,8 +469,8 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="text-xs text-slate-400 block font-medium">Exam Fee</span>
-                      <span className="text-sm font-extrabold text-slate-900 font-mono">
+                      <span className="text-[11px] text-slate-500 block">Exam Fee</span>
+                      <span className="text-xs font-bold text-slate-900 font-mono">
                         ₹ {isTheory ? theoryFeeRate : nonTheoryFeeRate}
                       </span>
                     </div>
@@ -396,99 +482,99 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
         </div>
 
         {/* Right Column: Real-Time Dynamic Fee Calculator & Payment Section */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 space-y-4">
           {/* Dynamic Fee Calculator Box */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-20">
-            <h2 className="text-base font-bold text-slate-900 font-['Outfit'] border-b border-slate-200 pb-3 flex items-center justify-between">
-              <span>Real-Time Fee Calculator</span>
-              <span className="text-xs text-blue-600 font-normal font-sans">Active Rates</span>
+          <div className="bg-white rounded border border-slate-300 shadow-xs p-4 sticky top-16">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-2 flex items-center justify-between">
+              <span>Fee Calculation Slip</span>
+              <span className="text-[11px] text-[#1e3a8a] font-normal lowercase">official rates</span>
             </h2>
 
             {/* Selection Breakdown */}
-            <div className="py-4 space-y-2.5 text-xs text-slate-600 border-b border-slate-100">
+            <div className="py-3 space-y-2 text-xs text-slate-600 border-b border-slate-200">
               <div className="flex justify-between items-center">
                 <span>
                   Theory Papers (<strong className="text-slate-900">{selectedTheoryCount}</strong> &times; ₹{theoryFeeRate}):
                 </span>
-                <span className="font-mono font-bold text-slate-900">₹ {theoryTotal}</span>
+                <span className="font-mono font-medium text-slate-900">₹ {theoryTotal}</span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span>
                   Non-Theory Papers (<strong className="text-slate-900">{selectedNonTheoryCount}</strong> &times; ₹{nonTheoryFeeRate}):
                 </span>
-                <span className="font-mono font-bold text-slate-900">₹ {nonTheoryTotal}</span>
+                <span className="font-mono font-medium text-slate-900">₹ {nonTheoryTotal}</span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span>Base Processing Fee:</span>
-                <span className="font-mono font-bold text-slate-900">₹ {selectedSubjectsList.length > 0 ? baseFee : 0}</span>
+                <span className="font-mono font-medium text-slate-900">₹ {selectedSubjectsList.length > 0 ? baseFee : 0}</span>
               </div>
             </div>
 
             {/* Total Fee Highlight */}
-            <div className="py-4 flex justify-between items-center">
+            <div className="py-3 flex justify-between items-center bg-slate-50 -mx-4 px-4 border-b border-slate-200">
               <div>
-                <span className="text-xs text-slate-500 block">Total Examination Fee</span>
-                <span className="text-2xl font-black text-emerald-700 font-['Outfit']">
+                <span className="text-[11px] text-slate-500 block uppercase font-semibold">Total Examination Fee</span>
+                <span className="text-xl font-bold text-slate-900">
                   ₹ {totalFee.toFixed(2)}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-xs text-slate-500 block">Papers Selected</span>
-                <span className="text-sm font-bold text-slate-800">
+                <span className="text-[11px] text-slate-500 block uppercase font-semibold">Papers Selected</span>
+                <span className="text-xs font-bold text-slate-800">
                   {selectedSubjectsList.length} Subjects
                 </span>
               </div>
             </div>
 
             {/* Payment Method Selector */}
-            <div className="mt-2 pt-4 border-t border-slate-200 space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                Choose Payment Option
+            <div className="pt-3 space-y-2">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                Payment Option
               </label>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('ONLINE')}
-                  className={`p-3 rounded-xl border text-center transition-all ${
+                  className={`p-2.5 rounded border text-center transition-colors cursor-pointer ${
                     paymentMethod === 'ONLINE'
-                      ? 'border-blue-600 bg-blue-50/80 text-blue-900 font-bold shadow-xs'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'border-[#1e3a8a] bg-blue-50 text-[#1e3a8a] font-semibold'
+                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <CreditCard className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-                  <span className="text-xs block">Online Payment</span>
-                  <span className="text-[10px] text-slate-400 block font-normal">Instant Approval</span>
+                  <CreditCard className="w-4 h-4 mx-auto mb-1 text-[#1e3a8a]" />
+                  <span className="text-xs block font-semibold">Online Gateway</span>
+                  <span className="text-[10px] text-slate-500 block">Instant Receipt</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('MANUAL')}
-                  className={`p-3 rounded-xl border text-center transition-all ${
+                  className={`p-2.5 rounded border text-center transition-colors cursor-pointer ${
                     paymentMethod === 'MANUAL'
-                      ? 'border-blue-600 bg-blue-50/80 text-blue-900 font-bold shadow-xs'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'border-[#1e3a8a] bg-blue-50 text-[#1e3a8a] font-semibold'
+                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <Upload className="w-5 h-5 mx-auto mb-1 text-indigo-600" />
-                  <span className="text-xs block">Upload Receipt</span>
-                  <span className="text-[10px] text-slate-400 block font-normal">Bank / Challan</span>
+                  <Upload className="w-4 h-4 mx-auto mb-1 text-[#1e3a8a]" />
+                  <span className="text-xs block font-semibold">Upload Receipt</span>
+                  <span className="text-[10px] text-slate-500 block">Bank / Challan</span>
                 </button>
               </div>
 
               {/* Manual Payment Fields */}
               {paymentMethod === 'MANUAL' && (
-                <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in">
-                  <div className="bg-blue-50/70 border border-blue-200 p-2.5 rounded-lg text-[11px] text-blue-900">
-                    <div className="font-bold flex items-center gap-1 mb-1">
+                <div className="mt-3 p-3 rounded bg-slate-50 border border-slate-300 space-y-2.5">
+                  <div className="bg-white border border-slate-300 p-2 rounded text-[11px] text-slate-800">
+                    <div className="font-bold flex items-center gap-1 mb-1 text-[#1e3a8a]">
                       <Building className="w-3.5 h-3.5" />
-                      <span>University Account for Fee Deposit:</span>
+                      <span>University Bank Account for Fee Deposit:</span>
                     </div>
-                    <div className="space-y-0.5 text-slate-700 font-mono">
+                    <div className="space-y-0.5 text-slate-600 font-mono text-[10px]">
                       <div>A/C: {config.bankDetails?.accountNumber || '389201948201'}</div>
-                      <div>IFSC: {config.bankDetails?.ifscCode || 'SBIN0001423'} ({config.bankDetails?.bankName || 'SBI'})</div>
+                      <div>IFSC: {config.bankDetails?.ifscCode || 'SBIN0001423'} ({config.bankDetails?.bankName || 'State Bank of India'})</div>
                       <div>UPI: {config.bankDetails?.upiId || 'university.exam@sbi'}</div>
                     </div>
                   </div>
@@ -503,7 +589,7 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
                       value={transactionReference}
                       onChange={(e) => setTransactionReference(e.target.value)}
                       placeholder="e.g. SBI-UTR-938201948201"
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                      className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded focus:ring-1 focus:ring-blue-600 focus:outline-none font-mono"
                     />
                   </div>
 
@@ -516,7 +602,7 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
                       value={bankName}
                       onChange={(e) => setBankName(e.target.value)}
                       placeholder="State Bank of India / HDFC / UPI"
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full text-xs px-2.5 py-1.5 bg-white border border-slate-300 rounded focus:ring-1 focus:ring-blue-600 focus:outline-none"
                     />
                   </div>
 
@@ -529,10 +615,10 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
                       required
                       accept="image/*,application/pdf"
                       onChange={handleFileChange}
-                      className="w-full text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer"
+                      className="w-full text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-slate-300 file:text-[11px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
                     />
                     {receiptPreview && (
-                      <div className="mt-2 relative rounded border border-slate-200 overflow-hidden max-h-24 flex items-center justify-center bg-white">
+                      <div className="mt-2 relative rounded border border-slate-300 overflow-hidden max-h-24 flex items-center justify-center bg-white">
                         <img src={receiptPreview} alt="Receipt preview" className="object-contain max-h-24" />
                       </div>
                     )}
@@ -545,25 +631,25 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
                 type="button"
                 disabled={submitting || selectedSubjectsList.length === 0}
                 onClick={handleSubmit}
-                className="w-full mt-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full mt-3 py-2.5 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {submitting ? (
                   'Submitting Application...'
                 ) : paymentMethod === 'ONLINE' ? (
                   <>
                     <span>Proceed to Online Payment</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 ) : (
                   <>
                     <span>Submit with Payment Proof</span>
-                    <FileCheck className="w-4 h-4" />
+                    <FileCheck className="w-3.5 h-3.5" />
                   </>
                 )}
               </button>
 
-              <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-                By submitting, you certify that all information is accurate per university exam guidelines.
+              <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                By submitting, candidate certifies the eligibility of selected papers per university rules.
               </p>
             </div>
           </div>

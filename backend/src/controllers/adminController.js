@@ -1,5 +1,6 @@
 const { User, Registration, Session, Subject, AuditLog } = require('../models');
 const { logAudit } = require('../utils/auditLogger');
+const { importResultsFromExcel } = require('../utils/excelImporter');
 
 exports.getDashboardStats = async (req, res) => {
   try {
@@ -149,5 +150,40 @@ exports.updateStudentBacklogs = async (req, res) => {
   } catch (error) {
     console.error('Update student backlogs error:', error);
     res.status(500).json({ success: false, message: 'Failed to update student backlog record.' });
+  }
+};
+
+exports.importResultsExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload an Excel (.xlsx) file.' });
+    }
+
+    const { defaultCurrentSemester } = req.body;
+    const result = await importResultsFromExcel(req.file.buffer, {
+      currentSemester: defaultCurrentSemester ? Number(defaultCurrentSemester) : null
+    });
+
+    await logAudit({
+      action: 'IMPORT_EXCEL_RESULTS',
+      performedBy: req.user,
+      details: {
+        fileName: req.file.originalname,
+        totalRows: result.totalRows,
+        studentsCreated: result.studentsCreated,
+        studentsUpdated: result.studentsUpdated,
+        totalFailedRecords: result.totalFailedRecords
+      },
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${result.totalRows} rows. Created ${result.studentsCreated} students, updated ${result.studentsUpdated} students with ${result.totalFailedRecords} failure backlog records.`,
+      result
+    });
+  } catch (error) {
+    console.error('Import excel results error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to process Excel file.' });
   }
 };

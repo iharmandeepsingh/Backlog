@@ -29,7 +29,8 @@ import {
   TrendingUp,
   CreditCard,
   Edit,
-  Trash2
+  Trash2,
+  Upload
 } from 'lucide-react';
 import ReceiptModal from '../components/ReceiptModal';
 
@@ -95,6 +96,13 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
   // Assign Backlogs Modal
   const [selectedStudentForBacklogs, setSelectedStudentForBacklogs] = useState(null);
   const [assignedBacklogIds, setAssignedBacklogIds] = useState([]);
+
+  // Excel Result Import states
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importSemester, setImportSemester] = useState('3');
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
 
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
 
@@ -300,6 +308,32 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
     return true;
   });
 
+  const handleImportExcel = async (e) => {
+    e.preventDefault();
+    if (!importFile) {
+      setImportError('Please choose an Excel file (.xlsx) first.');
+      return;
+    }
+    setImporting(true);
+    setImportError('');
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('defaultCurrentSemester', importSemester);
+      const res = await adminService.importExcelResults(formData);
+      if (res.success) {
+        setImportResult(res.result);
+        showNotification(res.message);
+        loadAllAdminData();
+      }
+    } catch (err) {
+      setImportError(err.response?.data?.message || err.message || 'Excel import failed.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Toast Notification */}
@@ -317,26 +351,26 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       )}
 
       {/* Admin Dashboard Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
+      <div className="bg-white rounded border border-slate-300 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <span className="text-xs font-mono font-bold tracking-wider uppercase text-indigo-300">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+            <span className="text-xs font-mono font-bold tracking-wider uppercase text-slate-500">
               CENTRAL EXAMINATION CONTROL CONSOLE
             </span>
           </div>
-          <h1 className="text-2xl font-bold font-['Outfit'] mt-1">
+          <h1 className="text-xl font-bold text-slate-900 mt-1">
             Backlog Examination Administration
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Logged in as <strong className="text-white">{user?.name}</strong> &bull; Examination Controller Office
+          <p className="text-xs text-slate-600 mt-0.5">
+            Logged in as <strong className="text-slate-900">{user?.name}</strong> &bull; Examination Controller Office
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => registrationService.exportCSV()}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            className="px-3.5 py-2 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Export Registrations CSV</span>
@@ -345,7 +379,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           <button
             onClick={loadAllAdminData}
             title="Refresh All Records"
-            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors cursor-pointer"
+            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded transition-colors cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -353,12 +387,12 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       </div>
 
       {/* Admin Subtabs Navigation Bar */}
-      <div className="flex overflow-x-auto bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs text-xs font-bold scrollbar-none gap-1">
+      <div className="flex overflow-x-auto bg-white p-1.5 rounded border border-slate-200 shadow-xs text-xs font-bold scrollbar-none gap-1">
         <button
           onClick={() => setActiveSubTab('overview')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
             activeSubTab === 'overview'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -370,7 +404,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           onClick={() => setActiveSubTab('registrations')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
             activeSubTab === 'registrations'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -387,7 +421,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           onClick={() => setActiveSubTab('sessions')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
             activeSubTab === 'sessions'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -399,7 +433,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           onClick={() => setActiveSubTab('config')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
             activeSubTab === 'config'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -411,7 +445,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           onClick={() => setActiveSubTab('subjects')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
             activeSubTab === 'subjects'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -423,7 +457,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           onClick={() => setActiveSubTab('students')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
             activeSubTab === 'students'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -432,10 +466,22 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
         </button>
 
         <button
+          onClick={() => setActiveSubTab('import')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
+            activeSubTab === 'import'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Upload className="w-4 h-4" />
+          <span>Import Results (Excel)</span>
+        </button>
+
+        <button
           onClick={() => setActiveSubTab('audit')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ${
             activeSubTab === 'audit'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-[#1e3a8a] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -449,10 +495,10 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
         <div className="space-y-6">
           {/* Top KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Total Registrations</span>
-                <span className="text-2xl font-black text-slate-900 font-['Outfit'] mt-1 block">
+                <span className="text-2xl font-black text-slate-900  mt-1 block">
                   {stats?.totalRegistrations || 0}
                 </span>
                 <span className="text-[11px] text-slate-400">Across all sessions</span>
@@ -462,10 +508,10 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Pending Verification</span>
-                <span className="text-2xl font-black text-amber-600 font-['Outfit'] mt-1 block">
+                <span className="text-2xl font-black text-amber-600  mt-1 block">
                   {stats?.pendingVerification || 0}
                 </span>
                 <span className="text-[11px] text-amber-600 font-medium">Manual receipts awaiting audit</span>
@@ -475,10 +521,10 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Total Fees Collected</span>
-                <span className="text-2xl font-black text-emerald-700 font-['Outfit'] mt-1 block">
+                <span className="text-2xl font-black text-emerald-700  mt-1 block">
                   ₹ {(stats?.totalCollected || 0).toLocaleString()}
                 </span>
                 <span className="text-[11px] text-emerald-600 font-medium">Verified &amp; confirmed payments</span>
@@ -488,10 +534,10 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-semibold block">Registered Students</span>
-                <span className="text-2xl font-black text-indigo-700 font-['Outfit'] mt-1 block">
+                <span className="text-2xl font-black text-indigo-700  mt-1 block">
                   {stats?.totalStudents || 0}
                 </span>
                 <span className="text-[11px] text-slate-400">Eligible candidate accounts</span>
@@ -505,8 +551,8 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Payment Method Distribution */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 font-['Outfit'] mb-4 flex items-center justify-between">
+            <div className="bg-white p-6 rounded border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900  mb-4 flex items-center justify-between">
                 <span>Payment Channel Breakdown</span>
                 <CreditCard className="w-4 h-4 text-slate-400" />
               </h3>
@@ -534,7 +580,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-indigo-600 h-full rounded-full"
+                      className="bg-[#1e3a8a] h-full rounded-full"
                       style={{
                         width: `${((stats?.paymentMethods?.manual || 0) / Math.max(stats?.totalRegistrations || 1, 1)) * 100}%`
                       }}
@@ -550,8 +596,8 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
             </div>
 
             {/* Department Distribution */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 font-['Outfit'] mb-4">
+            <div className="bg-white p-6 rounded border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900  mb-4">
                 Applications by Department
               </h3>
 
@@ -572,7 +618,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
       {/* TAB 2: ALL REGISTRATIONS & PAYMENTS */}
       {activeSubTab === 'registrations' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded border border-slate-200 shadow-sm overflow-hidden">
           {/* Search & Multi-Filters Toolbar */}
           <div className="p-5 border-b border-slate-200 bg-slate-50/50 space-y-4">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
@@ -788,9 +834,9 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       {/* TAB 3: EXAMINATION SESSIONS */}
       {activeSubTab === 'sessions' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between bg-white p-5 rounded border border-slate-200 shadow-sm">
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-['Outfit']">
+              <h2 className="text-base font-bold text-slate-900 ">
                 Examination Registration Sessions
               </h2>
               <p className="text-xs text-slate-500">
@@ -800,7 +846,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
             <button
               onClick={() => setIsNewSessionOpen(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>New Session</span>
@@ -809,8 +855,8 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
           {/* New Session Modal / Form */}
           {isNewSessionOpen && (
-            <div className="bg-white p-6 rounded-2xl border border-indigo-200 shadow-md animate-in fade-in">
-              <h3 className="text-sm font-bold text-slate-900 font-['Outfit'] mb-4">
+            <div className="bg-white p-6 rounded border border-indigo-200 shadow-md animate-in fade-in">
+              <h3 className="text-sm font-bold text-slate-900  mb-4">
                 Add New Examination Registration Session
               </h3>
               <form onSubmit={handleCreateSession} className="space-y-4">
@@ -898,7 +944,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold"
+                    className="px-4 py-2 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-lg text-xs font-bold"
                   >
                     Save Examination Session
                   </button>
@@ -912,7 +958,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
             {sessions.map((sess) => (
               <div
                 key={sess._id}
-                className={`p-6 rounded-2xl border transition-all ${
+                className={`p-6 rounded border transition-all ${
                   sess.isActive
                     ? 'bg-indigo-50/60 border-indigo-300 shadow-sm ring-1 ring-indigo-400/30'
                     : 'bg-white border-slate-200'
@@ -932,7 +978,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                         </span>
                       )}
                     </div>
-                    <h3 className="font-bold text-slate-900 text-base font-['Outfit'] mt-1">
+                    <h3 className="font-bold text-slate-900 text-base  mt-1">
                       {sess.name}
                     </h3>
                   </div>
@@ -942,7 +988,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       sess.isActive
                         ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'bg-[#1e3a8a] hover:bg-indigo-700 text-white'
                     }`}
                   >
                     {sess.isActive ? 'Deactivate' : 'Activate Session'}
@@ -969,9 +1015,9 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
       {/* TAB 4: FEES & SUBJECT LIMITS CONFIGURATION */}
       {activeSubTab === 'config' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 max-w-4xl mx-auto">
+        <div className="bg-white rounded border border-slate-200 shadow-sm p-6 sm:p-8 max-w-4xl mx-auto">
           <div className="mb-6 border-b border-slate-200 pb-4">
-            <h2 className="text-lg font-bold text-slate-900 font-['Outfit']">
+            <h2 className="text-lg font-bold text-slate-900 ">
               Dynamic Fee Structure &amp; Theory Limits Configuration
             </h2>
             <p className="text-xs text-slate-500 mt-1">
@@ -1061,7 +1107,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
             {/* University Bank Details Section */}
             <div className="pt-4 border-t border-slate-200">
-              <h3 className="text-sm font-bold text-slate-900 font-['Outfit'] mb-3">
+              <h3 className="text-sm font-bold text-slate-900  mb-3">
                 University Bank Account Details (Displayed for Manual Receipts)
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -1121,7 +1167,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
             <button
               type="submit"
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-600/25 transition-all cursor-pointer"
+              className="w-full py-3 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-600/25 transition-all cursor-pointer"
             >
               Save Configuration &amp; Fee Structure
             </button>
@@ -1132,9 +1178,9 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       {/* TAB 5: CURRICULUM & SUBJECTS */}
       {activeSubTab === 'subjects' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between bg-white p-5 rounded border border-slate-200 shadow-sm">
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-['Outfit']">
+              <h2 className="text-base font-bold text-slate-900 ">
                 Curriculum Subjects Catalog ({subjects.length})
               </h2>
               <p className="text-xs text-slate-500">
@@ -1144,7 +1190,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
             <button
               onClick={() => setIsNewSubjectOpen(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Add Subject</span>
@@ -1153,8 +1199,8 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
           {/* New Subject Modal / Form */}
           {isNewSubjectOpen && (
-            <div className="bg-white p-6 rounded-2xl border border-indigo-200 shadow-md animate-in fade-in">
-              <h3 className="text-sm font-bold text-slate-900 font-['Outfit'] mb-4">
+            <div className="bg-white p-6 rounded border border-indigo-200 shadow-md animate-in fade-in">
+              <h3 className="text-sm font-bold text-slate-900  mb-4">
                 Add New Subject to Curriculum
               </h3>
               <form onSubmit={handleCreateSubject} className="space-y-4 text-xs">
@@ -1250,7 +1296,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold"
+                    className="px-4 py-2 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-lg font-bold"
                   >
                     Save Subject
                   </button>
@@ -1260,7 +1306,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
           )}
 
           {/* Subjects Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded border border-slate-200 shadow-sm overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
@@ -1315,9 +1361,9 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       {/* TAB 6: STUDENT RECORDS & BACKLOG ASSIGNMENTS */}
       {activeSubTab === 'students' && (
         <div className="space-y-6">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-['Outfit']">
+              <h2 className="text-base font-bold text-slate-900 ">
                 Student Records &amp; Eligible Backlogs
               </h2>
               <p className="text-xs text-slate-500">
@@ -1326,7 +1372,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded border border-slate-200 shadow-sm overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
@@ -1366,9 +1412,9 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
 
           {/* Modal to Assign/Edit Backlogs for a Student */}
           {selectedStudentForBacklogs && (
-            <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 animate-in fade-in">
-                <h3 className="text-sm font-bold text-slate-900 font-['Outfit'] mb-1">
+            <div className="fixed inset-0 z-50 bg-slate-950/80  flex items-center justify-center p-4">
+              <div className="bg-white rounded shadow-2xl max-w-xl w-full p-6 animate-in fade-in">
+                <h3 className="text-sm font-bold text-slate-900  mb-1">
                   Manage Eligible Backlogs for {selectedStudentForBacklogs.name}
                 </h3>
                 <p className="text-xs text-slate-500 mb-4">
@@ -1422,7 +1468,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
                   <button
                     type="button"
                     onClick={handleSaveStudentBacklogs}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold"
+                    className="px-4 py-2 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-lg text-xs font-bold"
                   >
                     Save Changes
                   </button>
@@ -1433,12 +1479,168 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
         </div>
       )}
 
+      {/* TAB: BULK IMPORT RESULTS FROM EXCEL */}
+      {activeSubTab === 'import' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900 ">
+                  Bulk Ingest University Results (Excel / .xlsx)
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Upload raw university result spreadsheets (like <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">LAW 2023.xlsx</code>) to automatically parse candidate enrollment, subject codes, grades, and record failure/backlogs in the database.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleImportExcel} className="mt-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* File input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Select Result Excel File (.xlsx, .xls) *
+                  </label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => setImportFile(e.target.files[0])}
+                    className="w-full text-xs file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-300 rounded-xl p-2 cursor-pointer bg-white"
+                  />
+                  {importFile && (
+                    <span className="text-[11px] text-indigo-600 font-medium mt-1 block">
+                      Selected: <strong>{importFile.name}</strong> ({(importFile.size / 1024).toFixed(1)} KB)
+                    </span>
+                  )}
+                </div>
+
+                {/* Default Current Semester for new students */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Default Current Semester for Candidates *
+                  </label>
+                  <select
+                    value={importSemester}
+                    onChange={(e) => setImportSemester(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-medium focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="2">Semester 2 (Can register for Sem 1 backlogs in Odd session)</option>
+                    <option value="3">Semester 3 (Can register for Sem 1 backlogs in Odd session)</option>
+                    <option value="4">Semester 4 (Can register for Sem 2 backlogs in Even session)</option>
+                    <option value="5">Semester 5 (Can register for Sem 1, 3 backlogs in Odd session)</option>
+                    <option value="6">Semester 6 (Can register for Sem 2, 4 backlogs in Even session)</option>
+                    <option value="7">Semester 7 (Can register for Sem 1, 3, 5 backlogs in Odd session)</option>
+                    <option value="8">Semester 8 (Can register for Sem 2, 4, 6 backlogs in Even session)</option>
+                  </select>
+                  <span className="text-[11px] text-slate-400 mt-1 block">
+                    Sets current semester for newly created students so previous semester backlogs can be calculated.
+                  </span>
+                </div>
+              </div>
+
+              {importError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{importError}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2.5 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {importing ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Parsing &amp; Ingesting Excel...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      <span>Ingest Student Failures &amp; Backlogs</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Import Result Summary Card */}
+          {importResult && (
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded p-6 shadow-sm">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm mb-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <span>Excel Ingestion Successfully Completed!</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                <div className="bg-white p-3 rounded-xl border border-emerald-200 text-center">
+                  <span className="text-[11px] text-slate-500 font-semibold uppercase block">Total Rows</span>
+                  <span className="text-xl font-extrabold text-slate-900 font-mono">{importResult.totalRows}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-emerald-200 text-center">
+                  <span className="text-[11px] text-slate-500 font-semibold uppercase block">Students Created</span>
+                  <span className="text-xl font-extrabold text-indigo-600 font-mono">{importResult.studentsCreated}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-emerald-200 text-center">
+                  <span className="text-[11px] text-slate-500 font-semibold uppercase block">Students Updated</span>
+                  <span className="text-xl font-extrabold text-blue-600 font-mono">{importResult.studentsUpdated}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-emerald-200 text-center">
+                  <span className="text-[11px] text-slate-500 font-semibold uppercase block">Failed Records</span>
+                  <span className="text-xl font-extrabold text-rose-600 font-mono">{importResult.totalFailedRecords}</span>
+                </div>
+              </div>
+
+              {importResult.importedStudents && importResult.importedStudents.length > 0 && (
+                <div className="bg-white rounded-xl border border-emerald-200 overflow-hidden">
+                  <div className="p-3 bg-emerald-100/40 border-b border-emerald-200 font-bold text-xs text-emerald-950">
+                    Imported Candidate Profiles
+                  </div>
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                        <th className="py-2.5 px-3">Roll / Enrollment</th>
+                        <th className="py-2.5 px-3">Candidate Name</th>
+                        <th className="py-2.5 px-3">Current Sem</th>
+                        <th className="py-2.5 px-3">Eligible Backlogs</th>
+                        <th className="py-2.5 px-3">Action Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {importResult.importedStudents.map((st, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-indigo-900">{st.rollNumber}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">{st.name}</td>
+                          <td className="py-2.5 px-3">Semester {st.currentSemester}</td>
+                          <td className="py-2.5 px-3 font-bold text-rose-700">{st.backlogCount} Subjects</td>
+                          <td className="py-2.5 px-3">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                              {st.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* TAB 7: SECURITY AUDIT TRAIL */}
       {activeSubTab === 'audit' && (
         <div className="space-y-6">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-['Outfit']">
+              <h2 className="text-base font-bold text-slate-900 ">
                 System Security &amp; Activity Audit Trail
               </h2>
               <p className="text-xs text-slate-500">
@@ -1447,7 +1649,7 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded border border-slate-200 shadow-sm overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">

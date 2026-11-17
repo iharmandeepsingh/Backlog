@@ -252,6 +252,32 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
     }
   };
 
+  const handleActivateAllSessions = async () => {
+    if (!window.confirm('Are you sure you want to ACTIVATE all examination registration sessions simultaneously? Students will be able to register across any active session.')) return;
+    try {
+      const res = await sessionService.activateAllSessions();
+      if (res.success) {
+        showNotification(res.message);
+        loadAllAdminData();
+      }
+    } catch (err) {
+      alert('Error activating all sessions: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDeactivateAllSessions = async () => {
+    if (!window.confirm('Are you sure you want to DEACTIVATE all examination sessions? Portal registrations will be closed.')) return;
+    try {
+      const res = await sessionService.deactivateAllSessions();
+      if (res.success) {
+        showNotification(res.message);
+        loadAllAdminData();
+      }
+    } catch (err) {
+      alert('Error deactivating all sessions: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   // Open Deadline Extension Modal
   const handleOpenExtendModal = (session) => {
     setSelectedSessionForExtend(session);
@@ -913,28 +939,57 @@ const AdminDashboard = ({ initialTab = 'overview', onSelectRegistrationToPrint }
       {/* TAB 3: EXAMINATION SESSIONS */}
       {activeSubTab === 'sessions' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between bg-white p-5 rounded border border-slate-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded border border-slate-200 shadow-sm">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-bold text-slate-900">
                   Examination Registration Sessions
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
                   Odd, Even &amp; Special Sessions
                 </span>
+                <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
+                  sessions.filter(s => s.isActive).length > 0
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}>
+                  {sessions.filter(s => s.isActive).length} of {sessions.length} Active
+                </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Configure odd/even/special registration sessions, start &amp; closing dates with exact time, and extend deadlines at any time.
+                Activate or deactivate individual sessions or all sessions simultaneously. Configure start &amp; closing dates with exact time, and extend deadlines anytime.
               </p>
             </div>
 
-            <button
-              onClick={() => setIsNewSessionOpen(true)}
-              className="px-4 py-2 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Session</span>
-            </button>
+            <div className="flex items-center flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleActivateAllSessions}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                title="Activate all sessions simultaneously"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Activate All ({sessions.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeactivateAllSessions}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 hover:border-rose-300 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                title="Deactivate all sessions"
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Deactivate All</span>
+              </button>
+
+              <button
+                onClick={() => setIsNewSessionOpen(true)}
+                className="px-3 py-1.5 bg-[#1e3a8a] hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Session</span>
+              </button>
+            </div>
           </div>
 
           {/* New Session Modal / Form */}

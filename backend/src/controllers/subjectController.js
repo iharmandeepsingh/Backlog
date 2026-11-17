@@ -36,8 +36,19 @@ exports.getEligibleBacklogs = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student profile not found.' });
     }
 
-    const activeSession = await Session.findOne({ isActive: true });
-    // Determine session type requested (ODD or EVEN) or fallback to active session
+    const activeSessions = await Session.find({ isActive: true });
+    let activeSession = null;
+    if (req.query.sessionId) {
+      activeSession = activeSessions.find(s => String(s._id) === String(req.query.sessionId));
+    }
+    if (!activeSession && req.query.sessionType) {
+      activeSession = activeSessions.find(s => s.type === req.query.sessionType.toUpperCase());
+    }
+    if (!activeSession && activeSessions.length > 0) {
+      activeSession = activeSessions.find(s => s.type === 'SPECIAL') || activeSessions[0];
+    }
+
+    // Determine session type requested (ODD, EVEN, SPECIAL) or fallback to active session
     const requestedType = req.query.sessionType
       ? req.query.sessionType.toUpperCase()
       : (activeSession ? activeSession.type : 'ODD');
@@ -125,6 +136,8 @@ exports.getEligibleBacklogs = async (req, res) => {
     res.json({
       success: true,
       activeSession,
+      activeSessions,
+      activeSessionsCount: activeSessions.length,
       sessionType: requestedType,
       isSpecialExam: isSpecial,
       allowAllSemesters: isSpecial,

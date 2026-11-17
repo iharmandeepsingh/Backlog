@@ -22,6 +22,7 @@ import PaymentGatewayModal from '../components/PaymentGatewayModal';
 const StudentDashboard = ({ onNavigateToRegister, onSelectRegistrationToPrint }) => {
   const { user } = useAuth();
   const [activeSession, setActiveSession] = useState(null);
+  const [activeSessions, setActiveSessions] = useState([]);
   const [sessionOpen, setSessionOpen] = useState(false);
   const [registrations, setRegistrations] = useState([]);
   const [eligibleCount, setEligibleCount] = useState(0);
@@ -43,6 +44,7 @@ const StudentDashboard = ({ onNavigateToRegister, onSelectRegistrationToPrint })
         const sessRes = await sessionService.getActiveSession();
         if (sessRes.success) {
           setActiveSession(sessRes.session);
+          setActiveSessions(sessRes.activeSessions || (sessRes.session ? [sessRes.session] : []));
           setSessionOpen(sessRes.isOpen);
         }
       } catch (e) {
@@ -154,6 +156,36 @@ const StudentDashboard = ({ onNavigateToRegister, onSelectRegistrationToPrint })
       {/* Session Alert & Rules Bar */}
       {activeSession ? (
         <div className="bg-white rounded border border-slate-300 p-5 shadow-xs space-y-4">
+          {activeSessions.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-slate-200">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                Multiple Active Sessions ({activeSessions.length}):
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {activeSessions.map((s) => (
+                  <button
+                    key={s._id}
+                    type="button"
+                    onClick={() => {
+                      setActiveSession(s);
+                      setSessionOpen(s.isOpen);
+                    }}
+                    className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                      activeSession?._id === s._id
+                        ? s.type === 'SPECIAL'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-[#1e3a8a] text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {s.type === 'SPECIAL' ? '⭐ Special Exam' : `${s.type} Semesters`}
+                    <span className="ml-1 opacity-75 font-normal">({s.name})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 mt-0.5 ${

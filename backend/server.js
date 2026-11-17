@@ -63,6 +63,14 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Process safety handlers
+process.on('unhandledRejection', (reason) => {
+  console.warn('⚠️ Unhandled Rejection:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Uncaught Exception:', err?.message || err);
+});
+
 // Initialize and Start Server
 const startServer = async () => {
   try {

@@ -42,23 +42,46 @@ exports.getSessions = async (req, res) => {
 
 exports.getActiveSession = async (req, res) => {
   try {
-    const session = await Session.findOne({ isActive: true });
-    if (!session) {
-      return res.status(404).json({
-        success: false,
+    const activeSessions = await Session.find({ isActive: true });
+    if (!activeSessions || activeSessions.length === 0) {
+      return res.json({
+        success: true,
+        session: null,
+        activeSessions: [],
+        count: 0,
+        isOpen: false,
         message: 'No active examination registration session found at this time.'
       });
     }
 
-    const timeStatus = calculateSessionTimeStatus(session);
+    const enrichedSessions = activeSessions.map(s => {
+      const sDoc = s.toObject ? s.toObject() : s;
+      return {
+        ...sDoc,
+        isSpecialExam: s.type === 'SPECIAL',
+        allowAllSemesters: s.type === 'SPECIAL',
+        ...calculateSessionTimeStatus(s)
+      };
+    });
+
+    let primary = null;
+    if (req.query.sessionId) {
+      primary = enrichedSessions.find(s => String(s._id) === String(req.query.sessionId));
+    } else if (req.query.type) {
+      primary = enrichedSessions.find(s => s.type === req.query.type.toUpperCase());
+    }
+    if (!primary) {
+      primary = enrichedSessions.find(s => s.type === 'SPECIAL') || enrichedSessions[0];
+    }
+
+    const timeStatus = calculateSessionTimeStatus(primary);
 
     res.json({
       success: true,
-      session: {
-        ...(session.toObject ? session.toObject() : session),
-        isSpecialExam: session.type === 'SPECIAL',
-        allowAllSemesters: session.type === 'SPECIAL'
-      },
+      session: primary,
+      activeSessions: enrichedSessions,
+      count: enrichedSessions.length,
+      allActiveTypes: enrichedSessions.map(s => s.type),
       ...timeStatus
     });
   } catch (error) {
@@ -105,11 +128,6 @@ exports.createSession = async (req, res) => {
     }
     if (end <= start) {
       return res.status(400).json({ success: false, message: 'Closing date/time must be after the opening date/time.' });
-    }
-
-    if (isActive) {
-      // Deactivate other sessions so only one is active at a time
-      await Session.updateMany({}, { isActive: false });
     }
 
     const newSession = await Session.create({
@@ -198,11 +216,7 @@ exports.updateSession = async (req, res) => {
     if (maxTheorySubjectsOverride !== undefined) updates.maxTheorySubjectsOverride = maxTheorySubjectsOverride ? Number(maxTheorySubjectsOverride) : null;
 
     if (isActive !== undefined) {
-      const activeBool = Boolean(isActive);
-      if (activeBool) {
-        await Session.updateMany({ _id: { $ne: id } }, { isActive: false });
-      }
-      updates.isActive = activeBool;
+      updates.isActive = Boolean(isActive);
     }
 
     const updated = await Session.findByIdAndUpdate(id, updates, { new: true });
@@ -320,5 +334,57 @@ exports.deleteSession = async (req, res) => {
   } catch (error) {
     console.error('Delete session error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete session.' });
+  }
+};
+
+/**
+ * Bulk action: Activate all examination sessions simultaneously
+ */
+exports.activateAllSessions = async (req, res) => {
+  try {
+    await Session.updateMany({}, { isActive: true });
+    const all = await Session.find().sort({ createdAt: -1 });
+
+    await logAudit({
+      action: 'ACTIVATE_ALL_EXAM_SESSIONS',
+      performedBy: req.user,
+      details: { count: all.length, message: 'Admin activated all examination sessions simultaneously.' },
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `All ${all.length} examination sessions have been ACTIVATED simultaneously!`,
+      sessions: all
+    });
+  } catch (error) {
+    console.error('Activate all sessions error:', error);
+    res.status(500).json({ success: false, message: 'Failed to activate all sessions.' });
+  }
+};
+
+/**
+ * Bulk action: Deactivate all examination sessions simultaneously
+ */
+exports.deactivateAllSessions = async (req, res) => {
+  try {
+    await Session.updateMany({}, { isActive: false });
+    const all = await Session.find().sort({ createdAt: -1 });
+
+    await logAudit({
+      action: 'DEACTIVATE_ALL_EXAM_SESSIONS',
+      performedBy: req.user,
+      details: { count: all.length, message: 'Admin deactivated all examination sessions.' },
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `All ${all.length} examination sessions have been DEACTIVATED. Portal registration is now closed.`,
+      sessions: all
+    });
+  } catch (error) {
+    console.error('Deactivate all sessions error:', error);
+    res.status(500).json({ success: false, message: 'Failed to deactivate all sessions.' });
   }
 };

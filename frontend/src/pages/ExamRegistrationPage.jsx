@@ -185,6 +185,10 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
         formData.append('transactionReference', transactionReference);
         formData.append('bankName', bankName || 'Bank Transfer');
         formData.append('paymentDate', paymentDate);
+        if (activeSession?._id) {
+          formData.append('sessionId', activeSession._id);
+          formData.append('sessionType', activeSession.type || sessionType);
+        }
         if (receiptFile) {
           formData.append('receipt', receiptFile);
         }
@@ -197,7 +201,9 @@ const ExamRegistrationPage = ({ onRegistrationSuccess, onCancel }) => {
         // ONLINE payment
         const payload = {
           subjectIds: selectedSubjectIds,
-          paymentMethod: 'ONLINE'
+          paymentMethod: 'ONLINE',
+          sessionId: activeSession?._id,
+          sessionType: activeSession?.type || sessionType
         };
         const res = await registrationService.createRegistration(payload);
         if (res.success) {

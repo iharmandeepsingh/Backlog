@@ -33,12 +33,23 @@ exports.createRegistration = async (req, res) => {
     }
 
     // 1. Validate active session
-    const activeSession = await Session.findOne({ isActive: true });
-    if (!activeSession) {
+    const activeSessions = await Session.find({ isActive: true });
+    if (!activeSessions || activeSessions.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'Registration is closed. No active examination session found.'
       });
+    }
+
+    let activeSession = null;
+    if (req.body.sessionId) {
+      activeSession = activeSessions.find(s => String(s._id) === String(req.body.sessionId));
+    }
+    if (!activeSession && req.body.sessionType) {
+      activeSession = activeSessions.find(s => s.type === req.body.sessionType.toUpperCase());
+    }
+    if (!activeSession) {
+      activeSession = activeSessions.find(s => s.type === 'SPECIAL') || activeSessions[0];
     }
 
     // Check session date & time validity

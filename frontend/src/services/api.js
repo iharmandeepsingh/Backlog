@@ -85,6 +85,14 @@ export const sessionService = {
     const res = await api.patch(`/sessions/${id}/extend`, data);
     return res.data;
   },
+  activateAllSessions: async () => {
+    const res = await api.patch('/sessions/bulk/activate-all');
+    return res.data;
+  },
+  deactivateAllSessions: async () => {
+    const res = await api.patch('/sessions/bulk/deactivate-all');
+    return res.data;
+  },
   deleteSession: async (id) => {
     const res = await api.delete(`/sessions/${id}`);
     return res.data;
